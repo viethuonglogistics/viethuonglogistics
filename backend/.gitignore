@@ -1,0 +1,10 @@
+# Environment variables
+.env
+.env.local
+
+# Dependency directories
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*

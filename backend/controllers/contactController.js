@@ -1,0 +1,292 @@
+const { pool } = require('../config/database');
+const { sendContactNotification } = require('../services/emailService');
+const { recordAdminAudit } = require('../services/adminAuditService');
+
+const CRM_STAGE_LABELS = {
+  new_lead: 'Khách mới',
+  called: 'Đã gọi',
+  quoting: 'Đang báo giá',
+  negotiating: 'Đang thương lượng',
+  contracted: 'Đã ký hợp đồng',
+  completed: 'Hoàn thành',
+};
+
+const REPLIED_STAGES = new Set(['quoting', 'negotiating', 'contracted', 'completed']);
+
+function pipelineStageForContactStatus(status, currentStage) {
+  if (status === 'new') return 'new_lead';
+  if (status === 'read') return 'called';
+  if (status === 'archived') return 'completed';
+  if (status === 'replied') {
+    return REPLIED_STAGES.has(currentStage) ? currentStage : 'quoting';
+  }
+  return currentStage || 'new_lead';
+}
+
+// POST /api/contact - Frontend gửi form liên hệ
+const submitContact = async (req, res) => {
+  try {
+    const { full_name, email, phone, company, message } = req.body;
+
+    const contact = {
+      full_name: String(full_name || '').trim(),
+      email: String(email || '').trim(),
+      phone: String(phone || '').trim(),
+      company: String(company || '').trim(),
+      message: String(message || '').trim(),
+    };
+
+    if (!contact.full_name || !contact.phone || !contact.message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vui lòng nhập họ tên, số điện thoại và nội dung tin nhắn.',
+      });
+    }
+
+    if (contact.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contact.email)) {
+      return res.status(400).json({ success: false, message: 'Địa chỉ email chưa đúng định dạng.' });
+    }
+
+    if (
+      contact.full_name.length > 100 ||
+      contact.email.length > 100 ||
+      contact.phone.length > 20 ||
+      contact.company.length > 150
+    ) {
+      return res.status(400).json({ success: false, message: 'Thông tin liên hệ vượt quá độ dài cho phép.' });
+    }
+
+    const [result] = await pool.query(
+      'INSERT INTO contact_messages (full_name, email, phone, company, message) VALUES (?, ?, ?, ?, ?)',
+      [contact.full_name, contact.email, contact.phone, contact.company, contact.message]
+    );
+
+    try {
+      await pool.query(
+        `INSERT INTO crm_activities (contact_id, activity_type, title, description)
+         VALUES (?, 'created', 'Tiếp nhận khách hàng', 'Khách hàng gửi yêu cầu liên hệ từ website.')`,
+        [result.insertId]
+      );
+    } catch (activityError) {
+      console.warn('[CRM] Không thể tạo nhật ký tiếp nhận:', activityError.message);
+    }
+
+    let emailNotificationSent = false;
+    try {
+      emailNotificationSent = await sendContactNotification({
+        id: result.insertId,
+        ...contact,
+      });
+    } catch (mailError) {
+      console.error('[MAIL] Không thể gửi thông báo liên hệ:', mailError.message);
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Gửi tin nhắn thành công! Chúng tôi sẽ liên hệ sớm.',
+      email_notification_sent: emailNotificationSent,
+    });
+  } catch (err) {
+    console.error('submitContact error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  }
+};
+
+// GET /api/admin/contacts - Admin xem tin nhắn
+const getContacts = async (req, res) => {
+  try {
+    const { status, search = '' } = req.query;
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const offset = (page - 1) * limit;
+    let conditions = [];
+    let params = [];
+
+    if (['new', 'read', 'replied', 'archived'].includes(status)) {
+      conditions.push('status = ?');
+      params.push(status);
+    }
+
+    const searchTerm = String(search).trim();
+    if (searchTerm) {
+      conditions.push('(full_name LIKE ? OR phone LIKE ? OR email LIKE ? OR company LIKE ? OR message LIKE ?)');
+      const keyword = `%${searchTerm}%`;
+      params.push(keyword, keyword, keyword, keyword, keyword);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+    const [countResult] = await pool.query(`SELECT COUNT(*) as total FROM contact_messages ${whereClause}`, params);
+    const total = countResult[0].total;
+
+    const [rows] = await pool.query(
+      `SELECT * FROM contact_messages ${whereClause} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+      [...params, limit, offset]
+    );
+
+    res.json({
+      success: true,
+      data: rows,
+      pagination: { total, page, limit, total_pages: Math.ceil(total / limit) },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  }
+};
+
+// PUT /api/admin/contacts/:id/status
+const updateContactStatus = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    const validStatuses = ['new', 'read', 'replied', 'archived'];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Trạng thái không hợp lệ.' });
+    }
+
+    await connection.beginTransaction();
+    const [beforeRows] = await connection.query(
+      'SELECT * FROM contact_messages WHERE id = ? FOR UPDATE',
+      [id],
+    );
+    if (!beforeRows.length) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: 'Không tìm thấy liên hệ.' });
+    }
+
+    const before = beforeRows[0];
+    const previousStage = CRM_STAGE_LABELS[before.pipeline_stage] ? before.pipeline_stage : 'new_lead';
+    const nextStage = pipelineStageForContactStatus(status, previousStage);
+
+    let pipelinePosition = before.pipeline_position;
+    if (nextStage !== previousStage) {
+      const [positionRows] = await connection.query(
+        `SELECT COALESCE(MAX(pipeline_position), 0) + 1 AS next_position
+         FROM contact_messages
+         WHERE pipeline_stage = ?`,
+        [nextStage],
+      );
+      pipelinePosition = positionRows[0]?.next_position || 1;
+    }
+
+    await connection.query(
+      `UPDATE contact_messages
+       SET status = ?, pipeline_stage = ?, pipeline_position = ?
+       WHERE id = ?`,
+      [status, nextStage, pipelinePosition, id],
+    );
+
+    if (nextStage !== previousStage) {
+      await connection.query(
+        `INSERT INTO crm_activities
+          (contact_id, activity_type, title, description, from_stage, to_stage, created_by)
+         VALUES (?, 'stage_changed', ?, ?, ?, ?, ?)`,
+        [
+          id,
+          `Chuyển sang ${CRM_STAGE_LABELS[nextStage]}`,
+          `Giai đoạn CRM được đồng bộ khi trạng thái liên hệ đổi sang “${status}”.`,
+          previousStage,
+          nextStage,
+          req.user?.id || null,
+        ],
+      );
+    }
+
+    const [afterRows] = await connection.query('SELECT * FROM contact_messages WHERE id = ?', [id]);
+    await connection.commit();
+
+    await recordAdminAudit({
+      module: 'contacts', action: 'status', entityType: 'contact', entityId: id,
+      summary: `Cập nhật trạng thái liên hệ của ${before.full_name}`,
+      before, after: afterRows[0], userId: req.user?.id,
+    });
+    res.json({
+      success: true,
+      message: 'Cập nhật trạng thái và CRM thành công!',
+      data: afterRows[0],
+    });
+  } catch (err) {
+    await connection.rollback();
+    console.error('updateContactStatus error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  } finally {
+    connection.release();
+  }
+};
+
+// DELETE /api/admin/contacts/:id
+const deleteContact = async (req, res) => {
+  try {
+    const [beforeRows] = await pool.query('SELECT * FROM contact_messages WHERE id = ?', [req.params.id]);
+    if (!beforeRows.length) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy liên hệ.' });
+    }
+    await pool.query('DELETE FROM contact_messages WHERE id = ?', [req.params.id]);
+    await recordAdminAudit({
+      module: 'contacts', action: 'delete', entityType: 'contact', entityId: req.params.id,
+      summary: `Xóa liên hệ của ${beforeRows[0].full_name}`, before: beforeRows[0], userId: req.user?.id,
+    });
+    res.json({ success: true, message: 'Xóa tin nhắn thành công!' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  }
+};
+
+// GET /api/admin/contacts/stats - Thống kê
+const getContactStats = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT 
+        COUNT(*) as total,
+        SUM(status = 'new') as new_count,
+        SUM(status = 'read') as read_count,
+        SUM(status = 'replied') as replied_count,
+        SUM(status = 'archived') as archived_count
+       FROM contact_messages`
+    );
+    res.json({ success: true, data: rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  }
+};
+
+// PUT /api/admin/contacts/:id/crm
+const updateContactCrm = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const note = String(req.body.admin_note ?? '').trim();
+    const action = String(req.body.last_action ?? '').trim();
+
+    const [beforeRows] = await pool.query('SELECT * FROM contact_messages WHERE id = ?', [id]);
+    if (!beforeRows.length) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy liên hệ.' });
+    }
+
+    await pool.query(
+      `UPDATE contact_messages
+       SET admin_note = ?, last_action = ?, last_action_at = CASE WHEN ? <> '' THEN CURRENT_TIMESTAMP ELSE last_action_at END
+       WHERE id = ?`,
+      [note, action || null, action, id]
+    );
+
+    const [afterRows] = await pool.query('SELECT * FROM contact_messages WHERE id = ?', [id]);
+    await recordAdminAudit({
+      module: 'contacts',
+      action: 'update',
+      entityType: 'contact',
+      entityId: id,
+      summary: `Cập nhật CRM liên hệ của ${beforeRows[0].full_name}`,
+      before: beforeRows[0],
+      after: afterRows[0],
+      userId: req.user?.id,
+    });
+
+    res.json({ success: true, message: 'Đã cập nhật ghi chú xử lý.', data: afterRows[0] });
+  } catch (err) {
+    console.error('updateContactCrm error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  }
+};
+
+module.exports = { submitContact, getContacts, updateContactStatus, updateContactCrm, deleteContact, getContactStats };

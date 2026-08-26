@@ -1,0 +1,508 @@
+const { pool } = require('../config/database');
+const { deleteFromCloudinary, getPublicIdFromUrl } = require('../config/cloudinary');
+const { BLOG_CATEGORIES, DEFAULT_BLOG_CATEGORY } = require('../config/blogCategories');
+const { sanitizeLegacyLocalized } = require('../utils/cmsSanitizer');
+const { recordAdminAudit } = require('../services/adminAuditService');
+
+function createCategorySlug(name) {
+  return String(name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
+}
+
+function getCategoryLookup(identifier) {
+  const raw = String(identifier || '').trim();
+  const numericId = Number(raw);
+  if (Number.isInteger(numericId) && numericId > 0) {
+    return { where: 'id = ?', value: numericId };
+  }
+  return { where: 'name = ?', value: raw };
+}
+
+const getBlogCategories = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      'SELECT name FROM blog_categories WHERE is_active = 1 ORDER BY sort_order ASC, id ASC'
+    );
+    const categories = rows.length ? rows.map(row => row.name) : BLOG_CATEGORIES;
+    res.json({ success: true, data: categories });
+  } catch (err) {
+    console.error('getBlogCategories error:', err);
+    res.json({ success: true, data: BLOG_CATEGORIES });
+  }
+};
+
+const getAdminBlogCategories = async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `SELECT c.*, COUNT(b.id) AS post_count
+       FROM blog_categories c
+       LEFT JOIN blogs b ON b.category = c.name
+       GROUP BY c.id
+       ORDER BY c.sort_order ASC, c.id ASC`
+    );
+    res.json({ success: true, data: rows });
+  } catch (err) {
+    console.error('getAdminBlogCategories error:', err);
+    res.status(500).json({ success: false, message: 'Không thể tải danh mục tin tức.' });
+  }
+};
+
+const createBlogCategory = async (req, res) => {
+  try {
+    const name = String(req.body.name || '').trim();
+    const sortOrder = Number(req.body.sort_order) || 0;
+    const isActive = req.body.is_active === false || req.body.is_active === '0' ? 0 : 1;
+
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'Tên danh mục không được để trống.' });
+    }
+
+    let slug = createCategorySlug(name);
+    if (!slug) slug = `danh-muc-${Date.now()}`;
+
+    const [result] = await pool.query(
+      'INSERT INTO blog_categories (name, slug, sort_order, is_active) VALUES (?, ?, ?, ?)',
+      [name, slug, sortOrder, isActive]
+    );
+
+    const [created] = await pool.query('SELECT * FROM blog_categories WHERE id = ?', [result.insertId]);
+    await recordAdminAudit({
+      module: 'blogs', action: 'create', entityType: 'blog_category', entityId: result.insertId,
+      summary: `Tạo danh mục tin tức: ${name}`, after: created[0], userId: req.user?.id,
+    });
+
+    res.status(201).json({ success: true, message: 'Đã thêm danh mục tin tức.', data: created[0] });
+  } catch (err) {
+    console.error('createBlogCategory error:', err);
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ success: false, message: 'Danh mục này đã tồn tại.' });
+    }
+    res.status(500).json({ success: false, message: 'Không thể thêm danh mục tin tức.' });
+  }
+};
+
+const updateBlogCategory = async (req, res) => {
+  const connection = await pool.getConnection();
+  try {
+    const lookup = getCategoryLookup(req.params.id);
+    const name = String(req.body.name || '').trim();
+    const sortOrder = Number(req.body.sort_order) || 0;
+    const isActive = req.body.is_active === false || req.body.is_active === '0' ? 0 : 1;
+
+    if (!lookup.value) {
+      return res.status(400).json({ success: false, message: 'Mã danh mục không hợp lệ.' });
+    }
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'Tên danh mục không được để trống.' });
+    }
+
+    await connection.beginTransaction();
+    const [beforeRows] = await connection.query(`SELECT * FROM blog_categories WHERE ${lookup.where}`, [lookup.value]);
+    if (!beforeRows.length) {
+      await connection.rollback();
+      return res.status(404).json({ success: false, message: 'Không tìm thấy danh mục tin tức.' });
+    }
+
+    const before = beforeRows[0];
+    let slug = createCategorySlug(name);
+    if (!slug) slug = `danh-muc-${before.id}`;
+
+    await connection.query(
+      'UPDATE blog_categories SET name = ?, slug = ?, sort_order = ?, is_active = ? WHERE id = ?',
+      [name, slug, sortOrder, isActive, before.id]
+    );
+
+    if (before.name !== name) {
+      await connection.query('UPDATE blogs SET category = ? WHERE category = ?', [name, before.name]);
+    }
+
+    const [afterRows] = await connection.query('SELECT * FROM blog_categories WHERE id = ?', [before.id]);
+    await connection.commit();
+
+    await recordAdminAudit({
+      module: 'blogs', action: 'update', entityType: 'blog_category', entityId: before.id,
+      summary: `Cập nhật danh mục tin tức: ${name}`, before, after: afterRows[0], userId: req.user?.id,
+    });
+
+    res.json({ success: true, message: 'Đã cập nhật danh mục tin tức.', data: afterRows[0] });
+  } catch (err) {
+    await connection.rollback().catch(() => {});
+    console.error('updateBlogCategory error:', err);
+    if (err.code === 'ER_DUP_ENTRY') {
+      return res.status(409).json({ success: false, message: 'Danh mục này đã tồn tại.' });
+    }
+    res.status(500).json({ success: false, message: 'Không thể cập nhật danh mục tin tức.' });
+  } finally {
+    connection.release();
+  }
+};
+
+const deleteBlogCategory = async (req, res) => {
+  try {
+    const lookup = getCategoryLookup(req.params.id);
+    if (!lookup.value) {
+      return res.status(400).json({ success: false, message: 'Mã danh mục không hợp lệ.' });
+    }
+
+    const [rows] = await pool.query(`SELECT * FROM blog_categories WHERE ${lookup.where}`, [lookup.value]);
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy danh mục tin tức.' });
+    }
+
+    const [usedRows] = await pool.query('SELECT COUNT(*) AS total FROM blogs WHERE category = ?', [rows[0].name]);
+    if (Number(usedRows[0].total) > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Không thể xoá vì đang có ${usedRows[0].total} bài viết dùng danh mục này.`,
+      });
+    }
+
+    await pool.query('DELETE FROM blog_categories WHERE id = ?', [rows[0].id]);
+    await recordAdminAudit({
+      module: 'blogs', action: 'delete', entityType: 'blog_category', entityId: rows[0].id,
+      summary: `Xóa danh mục tin tức: ${rows[0].name}`, before: rows[0], userId: req.user?.id,
+    });
+
+    res.json({ success: true, message: 'Đã xoá danh mục tin tức.' });
+  } catch (err) {
+    console.error('deleteBlogCategory error:', err);
+    res.status(500).json({ success: false, message: 'Không thể xoá danh mục tin tức.' });
+  }
+};
+
+// Tạo slug từ tiêu đề
+function createSlug(title) {
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    + '-' + Date.now();
+}
+
+function stripHtml(value = '') {
+  return String(value)
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+}
+
+function getReadingTimeText(...parts) {
+  const text = parts.map(stripHtml).join(' ').trim()
+  const words = text.split(/\s+/).filter(Boolean).length
+  const minutes = Math.max(1, Math.ceil(words / 200))
+  return `${minutes} phút đọc`
+}
+
+function hasValidDate(value) {
+  if (!value) return false;
+  const raw = String(value).trim();
+  if (!raw || /^0{4}-0{2}-0{2}/.test(raw)) return false;
+  const normalized = raw.replace(' ', 'T');
+  const parsed = value instanceof Date ? value : new Date(normalized);
+  return !Number.isNaN(parsed.getTime());
+}
+
+function withSafeBlogDate(blog) {
+  if (!blog) return blog;
+  const isPublished = blog.status === 'published';
+  const hasPublishedDate = hasValidDate(blog.published_at);
+  return {
+    ...blog,
+    published_at: isPublished && !hasPublishedDate
+      ? (blog.created_at || new Date())
+      : blog.published_at,
+  };
+}
+
+const getBlogs = async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 10,
+      status,
+      category,
+      search,
+      featured,
+    } = req.query;
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    let conditions = [];
+    let params = [];
+
+if (!req.user) {
+  conditions.push('status = ?');
+  params.push('published');
+} else if (status) {
+  conditions.push('status = ?');
+  params.push(status);
+}
+
+    if (category) {
+      conditions.push('category = ?');
+      params.push(category);
+    }
+
+    if (featured === '1') {
+      conditions.push('is_featured = 1');
+    }
+
+    if (search) {
+      conditions.push('(title LIKE ? OR excerpt LIKE ?)');
+      params.push(`%${search}%`, `%${search}%`);
+    }
+
+    const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const [countResult] = await pool.query(
+      `SELECT COUNT(*) as total FROM blogs ${whereClause}`,
+      params
+    );
+    const total = countResult[0].total;
+
+    const [rows] = await pool.query(
+      `SELECT id, title, slug, excerpt, content, thumbnail_url, category, tags, author, 
+              status, view_count, is_featured, published_at, created_at
+       FROM blogs ${whereClause}
+       ORDER BY published_at DESC, created_at DESC
+       LIMIT ? OFFSET ?`,
+      [...params, parseInt(limit), offset]
+    );
+
+    const blogs = rows.map(({ content, ...blog }) => {
+      const safeBlog = withSafeBlogDate(sanitizeLegacyLocalized(blog));
+      const safeContent = sanitizeLegacyLocalized(content);
+      return {
+        ...safeBlog,
+        reading_time: getReadingTimeText(safeContent, safeBlog.excerpt, safeBlog.title),
+      };
+    });
+
+    res.json({
+      success: true,
+      data: blogs,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total_pages: Math.ceil(total / parseInt(limit)),
+      },
+    });
+  } catch (err) {
+    console.error('getBlogs error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  }
+};
+
+// GET /api/blogs/:slugOrId - Lấy 1 bài
+const getBlog = async (req, res) => {
+  try {
+    const { slugOrId } = req.params;
+    const isId = /^\d+$/.test(slugOrId);
+
+    const [rows] = await pool.query(
+      `SELECT * FROM blogs WHERE ${isId ? 'id' : 'slug'} = ?`,
+      [slugOrId]
+    );
+
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết.' });
+    }
+
+    // Tăng view count nếu là public request
+    if (!req.user) {
+      await pool.query('UPDATE blogs SET view_count = view_count + 1 WHERE id = ?', [rows[0].id]);
+    }
+
+    const safeBlog = withSafeBlogDate(sanitizeLegacyLocalized(rows[0]));
+
+    res.json({
+      success: true,
+      data: {
+        ...safeBlog,
+        reading_time: getReadingTimeText(safeBlog.content, safeBlog.excerpt, safeBlog.title),
+      },
+    });
+  } catch (err) {
+    console.error('getBlog error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  }
+};
+
+// POST /api/admin/blogs - Tạo bài mới
+const createBlog = async (req, res) => {
+  try {
+    const { title, excerpt, content, category, tags, author, status, is_featured } = req.body;
+
+    if (!title) {
+      return res.status(400).json({ success: false, message: 'Tiêu đề không được để trống.' });
+    }
+
+    const slug = createSlug(title);
+    const thumbnail_url = req.file?.path || '';
+    const thumbnail_public_id = req.file?.filename || '';
+    const nextStatus = status || 'draft';
+    const published_at = nextStatus === 'published' ? new Date() : null;
+
+    const [result] = await pool.query(
+      `INSERT INTO blogs 
+        (title, slug, excerpt, content, thumbnail_url, thumbnail_public_id, category, tags, author, status, is_featured, published_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        title, slug, excerpt || '', content || '', thumbnail_url, thumbnail_public_id,
+        category || DEFAULT_BLOG_CATEGORY, tags || '', author || req.user.full_name || 'Admin',
+        nextStatus, is_featured ? 1 : 0, published_at,
+      ]
+    );
+
+    const [newBlog] = await pool.query('SELECT * FROM blogs WHERE id = ?', [result.insertId]);
+    await recordAdminAudit({
+      module: 'blogs', action: 'create', entityType: 'blog', entityId: result.insertId,
+      summary: `Tạo bài viết: ${title}`, after: newBlog[0], userId: req.user?.id,
+    });
+
+    res.status(201).json({ success: true, message: 'Tạo bài viết thành công!', data: withSafeBlogDate(sanitizeLegacyLocalized(newBlog[0])) });
+  } catch (err) {
+    console.error('createBlog error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  }
+};
+
+// PUT /api/admin/blogs/:id - Cập nhật bài
+const updateBlog = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, excerpt, content, category, tags, author, status, is_featured } = req.body;
+
+    const [existing] = await pool.query('SELECT * FROM blogs WHERE id = ?', [id]);
+    if (!existing.length) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết.' });
+    }
+
+    const blog = existing[0];
+    let thumbnail_url = blog.thumbnail_url;
+    let thumbnail_public_id = blog.thumbnail_public_id;
+
+    // Nếu có ảnh mới upload
+    if (req.file) {
+      // Xóa ảnh cũ trên Cloudinary
+      if (blog.thumbnail_public_id) {
+        await deleteFromCloudinary(blog.thumbnail_public_id).catch(console.error);
+      }
+      thumbnail_url = req.file.path;
+      thumbnail_public_id = req.file.filename;
+    }
+
+    const nextStatus = status || blog.status;
+    const published_at =
+      nextStatus === 'published' && (blog.status !== 'published' || !hasValidDate(blog.published_at))
+        ? new Date()
+        : blog.published_at;
+
+    await pool.query(
+      `UPDATE blogs SET
+        title = ?, excerpt = ?, content = ?, thumbnail_url = ?, thumbnail_public_id = ?,
+        category = ?, tags = ?, author = ?, status = ?, is_featured = ?, published_at = ?
+       WHERE id = ?`,
+      [
+        title || blog.title,
+        excerpt ?? blog.excerpt,
+        content ?? blog.content,
+        thumbnail_url,
+        thumbnail_public_id,
+        category || blog.category,
+        tags ?? blog.tags,
+        author || blog.author,
+        nextStatus,
+        is_featured !== undefined ? (is_featured ? 1 : 0) : blog.is_featured,
+        published_at,
+        id,
+      ]
+    );
+
+    const [updated] = await pool.query('SELECT * FROM blogs WHERE id = ?', [id]);
+    await recordAdminAudit({
+      module: 'blogs', action: 'update', entityType: 'blog', entityId: id,
+      summary: `Cập nhật bài viết: ${updated[0].title}`, before: blog, after: updated[0], userId: req.user?.id,
+    });
+    res.json({ success: true, message: 'Cập nhật bài viết thành công!', data: withSafeBlogDate(sanitizeLegacyLocalized(updated[0])) });
+  } catch (err) {
+    console.error('updateBlog error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  }
+};
+
+// DELETE /api/admin/blogs/:id
+const deleteBlog = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [rows] = await pool.query('SELECT * FROM blogs WHERE id = ?', [id]);
+
+    if (!rows.length) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy bài viết.' });
+    }
+
+    // Xóa ảnh trên Cloudinary
+    if (rows[0].thumbnail_public_id) {
+      await deleteFromCloudinary(rows[0].thumbnail_public_id).catch(console.error);
+    }
+
+    await pool.query('DELETE FROM blogs WHERE id = ?', [id]);
+    await recordAdminAudit({
+      module: 'blogs', action: 'delete', entityType: 'blog', entityId: id,
+      summary: `Xóa bài viết: ${rows[0].title}`, before: rows[0], userId: req.user?.id,
+    });
+    res.json({ success: true, message: 'Xóa bài viết thành công!' });
+  } catch (err) {
+    console.error('deleteBlog error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  }
+};
+// POST /api/blogs/admin/upload-content-image
+const uploadContentImage = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn ảnh để upload.' });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: 'Upload ảnh thành công!',
+      url: req.file.path,
+      public_id: req.file.filename,
+    });
+  } catch (err) {
+    console.error('uploadContentImage error:', err);
+    res.status(500).json({ success: false, message: 'Lỗi server.' });
+  }
+};
+module.exports = {
+  getBlogCategories,
+  getAdminBlogCategories,
+  createBlogCategory,
+  updateBlogCategory,
+  deleteBlogCategory,
+  getBlogs,
+  getBlog,
+  createBlog,
+  updateBlog,
+  deleteBlog,
+  uploadContentImage,
+};
