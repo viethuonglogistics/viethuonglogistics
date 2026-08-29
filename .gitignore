@@ -27,3 +27,4 @@ frontend/build/
 backend/dist/
 backend/public/uploads/*
 !backend/public/uploads/.gitkeep
+*.zip

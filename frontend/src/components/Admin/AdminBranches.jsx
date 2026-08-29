@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import {
   Building2, Edit3, Loader2, MapPin, Plus, RefreshCw,
   Save, Trash2, X,
@@ -22,6 +22,7 @@ const EMPTY_FORM = {
 }
 
 export default function AdminBranches() {
+  const formRef = useRef(null)
   const [branches, setBranches] = useState([])
   const [form, setForm] = useState(EMPTY_FORM)
   const [editingId, setEditingId] = useState(null)
@@ -70,7 +71,10 @@ export default function AdminBranches() {
       is_active: !!branch.is_active,
       sort_order: branch.sort_order || 0,
     })
-    window.scrollTo({ top: 0, behavior: 'smooth' })
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }, 50)
   }
 
   const saveBranch = async (event) => {
@@ -141,7 +145,7 @@ export default function AdminBranches() {
         </button>
       </div>
 
-      <form className={styles.formCard} onSubmit={saveBranch}>
+      <form ref={formRef} className={styles.formCard} onSubmit={saveBranch}>
         <div className={styles.formHeader}>
           <h2>{editingId ? 'Chỉnh sửa chi nhánh' : 'Thêm chi nhánh mới'}</h2>
           {editingId && (
