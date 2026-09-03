@@ -15,7 +15,8 @@ import {
   Heading2, Bold as BoldIcon, Italic as ItalicIcon, Underline as UnderlineIcon,
   List, ListOrdered, Undo2, Redo2, Image as ImageIcon, Megaphone, Loader2,
   AlignLeft, AlignCenter, AlignRight, AlignJustify, Highlighter, ChevronDown,
-  Table as TableIcon,
+  Table as TableIcon, Settings, X, Trash2, AlignLeft as AlignLeftIcon,
+  AlignCenter as AlignCenterIcon, AlignRight as AlignRightIcon, Check, RefreshCw,
 } from 'lucide-react'
 import { blogApi } from '../../services/api'
 import styles from './RichtextEditor.module.scss'
@@ -78,6 +79,80 @@ const CalloutBox = Node.create({
   },
 })
 
+// ── CustomFigure Node (Atomic Block Extension cho Hình ảnh + Mô tả ảnh) ──
+const CustomFigure = Node.create({
+  name: 'customFigure',
+  group: 'block',
+  selectable: true,
+  draggable: true,
+  atom: true,
+
+  addAttributes() {
+    return {
+      src: { default: '' },
+      alt: { default: '' },
+      caption: { default: '' },
+      align: { default: 'center' }, // 'left' | 'center' | 'right'
+      width: { default: '100' }, // '100' | '75' | '50'
+      captionAlign: { default: 'center' }, // 'left' | 'center' | 'right'
+    }
+  },
+
+  parseHTML() {
+    return [
+      {
+        tag: 'figure',
+        getAttrs: (el) => {
+          const img = el.querySelector('img')
+          const figcaption = el.querySelector('figcaption')
+
+          let align = 'center'
+          if (el.classList.contains('align-left')) align = 'left'
+          if (el.classList.contains('align-right')) align = 'right'
+
+          let width = '100'
+          if (el.classList.contains('width-75')) width = '75'
+          if (el.classList.contains('width-50')) width = '50'
+
+          let captionAlign = 'center'
+          if (el.classList.contains('caption-left') || figcaption?.style.textAlign === 'left') captionAlign = 'left'
+          if (el.classList.contains('caption-right') || figcaption?.style.textAlign === 'right') captionAlign = 'right'
+
+          return {
+            src: img?.getAttribute('src') || '',
+            alt: img?.getAttribute('alt') || '',
+            caption: figcaption ? figcaption.textContent : (img?.getAttribute('alt') || ''),
+            align,
+            width,
+            captionAlign,
+          }
+        },
+      },
+    ]
+  },
+
+  renderHTML({ HTMLAttributes, node }) {
+    const { src, alt, caption, align, width, captionAlign } = node.attrs
+
+    const figureClasses = [
+      'blog-image-figure',
+      `align-${align || 'center'}`,
+      `width-${width || '100'}`,
+      `caption-${captionAlign || 'center'}`,
+    ].join(' ')
+
+    const children = [
+      ['img', { src, alt: alt || caption || '', class: 'blog-content-image' }],
+    ]
+
+    if (caption && caption.trim()) {
+      children.push(['figcaption', { class: 'blog-image-caption', style: `text-align: ${captionAlign || 'center'}` }, caption])
+    }
+
+    return ['figure', mergeAttributes(HTMLAttributes, { class: figureClasses }), ...children]
+  },
+})
+
 // ── FontSize Extension ───────────────────────────────────
 const FontSize = Extension.create({
   name: 'fontSize',
@@ -110,17 +185,29 @@ const HIGHLIGHT_COLORS = [
 
 // ════════════════════════════════════════════════════════
 export default function RichTextEditor({ value, onChange, placeholder }) {
-  const fileInputRef    = useRef(null)
-  const sizeBtnRef      = useRef(null)
-  const highlightBtnRef = useRef(null)
-  const calloutBtnRef   = useRef(null)
-  const tableBtnRef     = useRef(null)
+  const fileInputRef        = useRef(null)
+  const replaceFileInputRef = useRef(null)
+  const sizeBtnRef          = useRef(null)
+  const highlightBtnRef     = useRef(null)
+  const calloutBtnRef       = useRef(null)
+  const tableBtnRef         = useRef(null)
 
   const [uploading, setUploading]           = useState(false)
+  const [replacingImg, setReplacingImg]     = useState(false)
   const [colorMenuOpen, setColorMenuOpen]   = useState(false)
   const [sizeMenuOpen, setSizeMenuOpen]     = useState(false)
   const [highlightMenuOpen, setHighlightMenuOpen] = useState(false)
   const [tableMenuOpen, setTableMenuOpen]   = useState(false)
+
+  // ── Modal Overlay State cho Cấu Hình Hình Ảnh ──
+  const [modalOpen, setModalOpen]                   = useState(false)
+  const [modalMode, setModalMode]                   = useState('insert') // 'insert' | 'edit'
+  const [modalImgSrc, setModalImgSrc]               = useState('')
+  const [modalCaption, setModalCaption]             = useState('')
+  const [modalCaptionAlign, setModalCaptionAlign]   = useState('center') // 'left' | 'center' | 'right'
+  const [modalImgAlign, setModalImgAlign]           = useState('center') // 'left' | 'center' | 'right'
+  const [modalImgWidth, setModalImgWidth]           = useState('100') // '100' | '75' | '50'
+  const [editingPos, setEditingPos]                 = useState(null)
 
   const editor = useEditor({
     extensions: [
@@ -130,6 +217,7 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
       TextStyle, FontSize,
       Highlight.configure({ multicolor: true }),
       CalloutBox,
+      CustomFigure,
       Table.configure({
         resizable: true,
         HTMLAttributes: {
@@ -142,7 +230,29 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
     ],
     content: value || '',
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
-    editorProps: { attributes: { class: styles.editorArea } },
+    editorProps: {
+      attributes: { class: styles.editorArea },
+      handleClick(view, pos, event) {
+        // Khi người dùng click vào hình ảnh trong nội dung -> Mở ngay ModalOverlay với thông số hiện tại
+        const figureEl = event.target.closest('figure') || event.target.closest('img')
+        if (figureEl) {
+          const node = view.state.doc.nodeAt(pos)
+          if (node && node.type.name === 'customFigure') {
+            const attrs = node.attrs
+            setModalImgSrc(attrs.src || '')
+            setModalCaption(attrs.caption || attrs.alt || '')
+            setModalCaptionAlign(attrs.captionAlign || 'center')
+            setModalImgAlign(attrs.align || 'center')
+            setModalImgWidth(attrs.width || '100')
+            setEditingPos(pos)
+            setModalMode('edit')
+            setModalOpen(true)
+            return true
+          }
+        }
+        return false
+      },
+    },
   })
 
   useEffect(() => {
@@ -157,6 +267,7 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
 
   const handlePickImage = () => fileInputRef.current?.click()
 
+  // ── Sau khi chọn ảnh -> Tải lên Cloudinary -> BẬT NGAY MODAL OVERLAY CHỈNH SỬA ──
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0]
     e.target.value = ''
@@ -167,12 +278,92 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
       const res = await blogApi.uploadContentImage(file)
       const url = res.url || res.data?.url
       if (!url) throw new Error('Không nhận được URL ảnh.')
-      editor.chain().focus().setImage({ src: url, alt: '' }).run()
+
+      // Thiết lập thông số ban đầu và MỞ NGAY MODAL OVERLAY
+      setModalImgSrc(url)
+      setModalCaption('')
+      setModalCaptionAlign('center')
+      setModalImgAlign('center')
+      setModalImgWidth('100')
+      setEditingPos(null)
+      setModalMode('insert')
+      setModalOpen(true)
     } catch (err) {
       alert(err.message || 'Upload ảnh thất bại.')
     } finally {
       setUploading(false)
     }
+  }
+
+  // ── THAY THẾ BẰNG ẢNH KHÁC (Trong Modal Overlay) ──
+  const handleReplaceFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) { alert('Vui lòng chọn file ảnh.'); return }
+    setReplacingImg(true)
+    try {
+      const res = await blogApi.uploadContentImage(file)
+      const url = res.url || res.data?.url
+      if (!url) throw new Error('Không nhận được URL ảnh mới.')
+
+      // Cập nhật URL ảnh mới mà GIỮ NGUYÊN các cấu hình hiện tại
+      setModalImgSrc(url)
+    } catch (err) {
+      alert(err.message || 'Upload ảnh thay thế thất bại.')
+    } finally {
+      setReplacingImg(false)
+    }
+  }
+
+  // ── Nút "CẬP NHẬT" trong Modal Overlay ──
+  const handleSaveModal = () => {
+    if (modalMode === 'insert') {
+      // Chèn CustomFigure mới vào nội dung
+      editor.chain().focus().insertContent({
+        type: 'customFigure',
+        attrs: {
+          src: modalImgSrc,
+          alt: modalCaption,
+          caption: modalCaption,
+          align: modalImgAlign,
+          width: modalImgWidth,
+          captionAlign: modalCaptionAlign,
+        },
+      }).run()
+    } else if (modalMode === 'edit') {
+      // Cập nhật CustomFigure đang có trong nội dung
+      if (editingPos !== null) {
+        editor.chain().focus().setNodeSelection(editingPos).updateAttributes('customFigure', {
+          src: modalImgSrc,
+          alt: modalCaption,
+          caption: modalCaption,
+          align: modalImgAlign,
+          width: modalImgWidth,
+          captionAlign: modalCaptionAlign,
+        }).run()
+      } else {
+        editor.chain().focus().updateAttributes('customFigure', {
+          src: modalImgSrc,
+          alt: modalCaption,
+          caption: modalCaption,
+          align: modalImgAlign,
+          width: modalImgWidth,
+          captionAlign: modalCaptionAlign,
+        }).run()
+      }
+    }
+    setModalOpen(false)
+  }
+
+  // ── Nút "XÓA HÌNH ẢNH" trong Modal Overlay ──
+  const handleDeleteModal = () => {
+    if (editingPos !== null) {
+      editor.chain().focus().setNodeSelection(editingPos).deleteSelection().run()
+    } else {
+      editor.chain().focus().deleteNode('customFigure').run()
+    }
+    setModalOpen(false)
   }
 
   const insertCallout = (color) => {
@@ -309,7 +500,163 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
         <button type="button" onClick={() => editor.chain().focus().redo().run()} disabled={!editor.can().redo()} title="Làm lại"><Redo2 size={16} /></button>
 
       </div>
+
       <EditorContent editor={editor} placeholder={placeholder} />
+
+      {/* ── MODAL OVERLAY CHỈNH SỬA CẤU HÌNH HÌNH ẢNH (MODAL OVERLAY) ── */}
+      {modalOpen && ReactDOM.createPortal(
+        <div className={styles.modalOverlay} onClick={() => setModalOpen(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3><Settings size={18} /> {modalMode === 'insert' ? 'Chèn & Cấu hình Hình ảnh' : 'Chỉnh sửa Thuộc tính Hình ảnh'}</h3>
+              <button type="button" className={styles.modalCloseBtn} onClick={() => setModalOpen(false)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className={styles.modalBody}>
+              {/* Xem trước ảnh + Nút Thay thế ảnh khác */}
+              {modalImgSrc && (
+                <div className={styles.modalPreviewWrap}>
+                  <img src={modalImgSrc} alt="Preview" />
+                  <button
+                    type="button"
+                    className={styles.modalReplaceBtn}
+                    onClick={() => replaceFileInputRef.current?.click()}
+                    disabled={replacingImg}
+                    title="Thay thế bằng ảnh khác"
+                  >
+                    {replacingImg ? <Loader2 size={13} className={styles.spin} /> : <RefreshCw size={13} />}
+                    <span>{replacingImg ? 'Đang tải ảnh mới...' : 'Thay thế ảnh khác'}</span>
+                  </button>
+                  <input
+                    ref={replaceFileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={handleReplaceFileChange}
+                    className={styles.hiddenFileInput}
+                  />
+                </div>
+              )}
+
+              {/* Ô nhập Mô tả hình ảnh (Chú thích / Alt SEO) */}
+              <div className={styles.modalFormGroup}>
+                <label>Mô tả hình ảnh (Chú thích / Alt SEO)</label>
+                <input
+                  type="text"
+                  className={styles.modalInput}
+                  value={modalCaption}
+                  placeholder="Nhập mô tả hình ảnh tại đây..."
+                  onChange={(e) => setModalCaption(e.target.value)}
+                  autoFocus
+                />
+              </div>
+
+              {/* Căn lề chữ Mô tả */}
+              <div className={styles.modalFormGroup}>
+                <label>Căn lề mô tả chữ</label>
+                <div className={styles.modalBtnGroup}>
+                  <button
+                    type="button"
+                    className={modalCaptionAlign === 'left' ? styles.activeBtn : ''}
+                    onClick={() => setModalCaptionAlign('left')}
+                  >
+                    <AlignLeftIcon size={14} /> Trái
+                  </button>
+                  <button
+                    type="button"
+                    className={modalCaptionAlign === 'center' ? styles.activeBtn : ''}
+                    onClick={() => setModalCaptionAlign('center')}
+                  >
+                    <AlignCenterIcon size={14} /> Giữa
+                  </button>
+                  <button
+                    type="button"
+                    className={modalCaptionAlign === 'right' ? styles.activeBtn : ''}
+                    onClick={() => setModalCaptionAlign('right')}
+                  >
+                    <AlignRightIcon size={14} /> Phải
+                  </button>
+                </div>
+              </div>
+
+              {/* Vị trí hình ảnh */}
+              <div className={styles.modalFormGroup}>
+                <label>Vị trí hình ảnh</label>
+                <div className={styles.modalBtnGroup}>
+                  <button
+                    type="button"
+                    className={modalImgAlign === 'left' ? styles.activeBtn : ''}
+                    onClick={() => setModalImgAlign('left')}
+                  >
+                    <AlignLeftIcon size={14} /> Trái
+                  </button>
+                  <button
+                    type="button"
+                    className={modalImgAlign === 'center' ? styles.activeBtn : ''}
+                    onClick={() => setModalImgAlign('center')}
+                  >
+                    <AlignCenterIcon size={14} /> Giữa
+                  </button>
+                  <button
+                    type="button"
+                    className={modalImgAlign === 'right' ? styles.activeBtn : ''}
+                    onClick={() => setModalImgAlign('right')}
+                  >
+                    <AlignRightIcon size={14} /> Phải
+                  </button>
+                </div>
+              </div>
+
+              {/* Kích thước hiển thị */}
+              <div className={styles.modalFormGroup}>
+                <label>Kích thước hiển thị</label>
+                <div className={styles.modalBtnGroup}>
+                  <button
+                    type="button"
+                    className={modalImgWidth === '100' ? styles.activeBtn : ''}
+                    onClick={() => setModalImgWidth('100')}
+                  >
+                    100%
+                  </button>
+                  <button
+                    type="button"
+                    className={modalImgWidth === '75' ? styles.activeBtn : ''}
+                    onClick={() => setModalImgWidth('75')}
+                  >
+                    75%
+                  </button>
+                  <button
+                    type="button"
+                    className={modalImgWidth === '50' ? styles.activeBtn : ''}
+                    onClick={() => setModalImgWidth('50')}
+                  >
+                    50%
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              {modalMode === 'edit' && (
+                <button type="button" className={styles.modalDeleteBtn} onClick={handleDeleteModal}>
+                  <Trash2 size={15} /> Xóa ảnh này
+                </button>
+              )}
+              <div className={styles.rightFooterBtns}>
+                <button type="button" className={styles.modalCancelBtn} onClick={() => setModalOpen(false)}>
+                  Hủy
+                </button>
+                <button type="button" className={styles.modalSubmitBtn} onClick={handleSaveModal}>
+                  <Check size={16} /> Cập nhật
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
     </div>
   )
 }

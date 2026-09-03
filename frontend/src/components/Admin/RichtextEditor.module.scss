@@ -1,286 +1,540 @@
-@use '../../styles/variables' as *;
-
+// ── Custom RichTextEditor Styles ──────────────────────────
 .wrapper {
-  border: 1px solid $gray-100;
-  border-radius: 10px;
-  overflow: visible;
-  background: $white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
 
   &:focus-within {
-    border-color: $red;
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
   }
 }
 
 .toolbar {
-    border-radius: 10px 10px 0 0; // ← thêm dòng này để toolbar vẫn có bo góc trên
-  overflow: visible;             
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 8px 10px;
-  border-bottom: 1px solid $gray-100;
-  background: rgba($black, 0.015);
   flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px 12px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  user-select: none;
 
   button {
-    display: flex;
+    display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 32px;
     height: 32px;
+    border-radius: 6px;
     border: none;
     background: transparent;
-    border-radius: 7px;
-    color: $gray-600;
+    color: #475569;
     cursor: pointer;
     transition: all 0.15s ease;
 
     &:hover:not(:disabled) {
-      background: rgba($red, 0.08);
-      color: $red;
+      background: #e2e8f0;
+      color: #0f172a;
     }
 
     &:disabled {
-      opacity: 0.35;
+      opacity: 0.4;
       cursor: not-allowed;
     }
-  }
-}
 
-.active {
-  background: rgba($red, 0.12) !important;
-  color: $red !important;
+    &.active {
+      background: #fee2e2;
+      color: #dc2626;
+      font-weight: 600;
+    }
+  }
 }
 
 .divider {
   width: 1px;
   height: 20px;
-  background: $gray-100;
+  background: #cbd5e1;
   margin: 0 4px;
-}
-
-.editorArea {
-  min-height: 320px;
-  max-height: 600px;
-  overflow-y: auto;
-  padding: 16px 18px;
-  font-size: 13.5px;
-  line-height: 1.7;
-  color: $black;
-
-  &:focus {
-    outline: none;
-  }
-
-  p {
-    margin: 0 0 12px;
-  }
-
-  h2 {
-    font-family: $font-display;
-    font-size: 18px;
-    font-weight: 700;
-    color: $black;
-    margin: 18px 0 10px;
-    padding-left: 12px;
-    border-left: 3px solid $red;
-  }
-
-  ul, ol {
-    margin: 0 0 12px;
-    padding-left: 22px;
-  }
-
-  strong {
-    font-weight: 700;
-  }
-
-  // placeholder khi rỗng
-  p.is-editor-empty:first-child::before {
-    content: attr(data-placeholder);
-    color: $gray-400;
-    float: left;
-    height: 0;
-    pointer-events: none;
-  }
-}
-// ════════════════════════════════════════════════════════
-// PHẦN THÊM MỚI vào RichTextEditor.module.scss
-// (giữ nguyên .wrapper, .toolbar, .editorArea, .active, .divider cũ của bạn)
-// ════════════════════════════════════════════════════════
-
-.hiddenFileInput {
-  display: none;
-}
-
-.spin {
-  animation: rte-spin 0.8s linear infinite;
-}
-
-@keyframes rte-spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
 }
 
 .colorPickerWrap {
   position: relative;
-  display: inline-flex;
-  align-items: center;
+  display: inline-block;
 }
 
-.colorMenu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9999;
-  background: #fff;
-  border: 1px solid #e2e2e2;
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-  padding: 6px;
-  min-width: 150px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.sizeBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px !important;
+  width: auto !important;
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+
+  &:hover {
+    background: #e2e8f0 !important;
+  }
 }
 
 .colorMenuItem {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 7px 10px;
+  padding: 6px 12px;
+  width: 100%;
   border: none;
-  background: none;
-  border-radius: 6px;
-  font-size: 13.5px;
-  color: #333;
+  background: transparent;
+  color: #334155;
+  font-size: 13px;
+  border-radius: 4px;
   cursor: pointer;
   text-align: left;
-  white-space: nowrap;
+  transition: background 0.15s;
 
   &:hover {
-    background: #f3f3f3;
+    background: #f1f5f9;
+    color: #0f172a;
   }
 }
 
 .swatch {
   width: 14px;
   height: 14px;
-  border-radius: 4px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  display: inline-block;
   flex-shrink: 0;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+
+  &_red    { background: #fee2e2; border-color: #fca5a5; }
+  &_blue   { background: #dbeafe; border-color: #93c5fd; }
+  &_yellow { background: #fef9c3; border-color: #fde047; }
+  &_green  { background: #dcfce7; border-color: #86efac; }
 }
 
-.swatch_red { background: #e6332f; }
-.swatch_blue { background: #1d6fd6; }
-.swatch_yellow { background: #f0ad1f; }
-.swatch_green { background: #2f9e44; }
+.hiddenFileInput {
+  display: none;
+}
 
-// ── Style nội dung bên trong editor: ảnh + callout box ──
-// Đặt :global vì nội dung TipTap render ra thẻ thuần (img, div.callout-box),
-// không phải class module nên cần :global để CSS module áp dụng được.
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+// ── Vùng soạn thảo ProseMirror ──────────────────────────
 .editorArea {
-  :global(img.blog-content-image) {
-    max-width: 100%;
-    border-radius: 10px;
-    display: block;
-    margin: 14px 0;
+  min-height: 350px;
+  padding: 16px 20px;
+  outline: none;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #1e293b;
+
+  p {
+    margin-bottom: 1rem;
+    &:last-child { margin-bottom: 0; }
+  }
+
+  h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+    border-bottom: 2px solid #fee2e2;
+    padding-bottom: 4px;
+  }
+
+  ul, ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1rem;
+    li { margin-bottom: 0.25rem; }
   }
 
   :global(.callout-box) {
-    border-radius: 10px;
-    padding: 16px 18px;
+    padding: 14px 18px;
+    border-radius: 8px;
     margin: 16px 0;
-    border-left: 4px solid;
+    font-size: 14.5px;
+    line-height: 1.6;
+    position: relative;
 
-    p:last-child {
-      margin-bottom: 0;
-    }
+    p { margin: 0; }
+
+    &:global(.callout-red)    { background: #fff5f5; border-left: 4px solid #dc2626; color: #991b1b; }
+    &:global(.callout-blue)   { background: #f0f9ff; border-left: 4px solid #0284c7; color: #075985; }
+    &:global(.callout-yellow) { background: #fefce8; border-left: 4px solid #eab308; color: #854d0e; }
+    &:global(.callout-green)  { background: #f0fdf4; border-left: 4px solid #16a34a; color: #166534; }
   }
 
-  :global(.callout-red) {
-    background: #fdecec;
-    border-color: #e6332f;
-  }
-
-  :global(.callout-blue) {
-    background: #e8f1fc;
-    border-color: #1d6fd6;
-  }
-
-  :global(.callout-yellow) {
-    background: #fef6e7;
-    border-color: #f0ad1f;
-  }
-
-  :global(.callout-green) {
-    background: #e9f7ed;
-    border-color: #2f9e44;
-  }
-
-  // ── CSS cho Bảng (Table) ──
-  :global(table), :global(.blog-table) {
+  :global(.blog-table) {
     width: 100%;
     border-collapse: collapse;
-    margin: 20px 0;
+    margin: 18px 0;
     font-size: 14px;
-    background: #ffffff;
-    border-radius: 8px;
-    overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 
-    th, td, :global(th), :global(td) {
+    th, td {
       border: 1px solid #cbd5e1;
       padding: 10px 14px;
       text-align: left;
-      line-height: 1.6;
-      vertical-align: top;
-      position: relative;
     }
 
-    th, :global(th) {
+    th {
       background-color: #f1f5f9;
-      font-weight: 700;
+      font-weight: 600;
       color: #0f172a;
     }
 
-    tr:nth-child(even), :global(tr:nth-child(even)) {
+    tr:nth-child(even) td {
       background-color: #f8fafc;
     }
+  }
 
-    tr:hover, :global(tr:hover) {
-      background-color: rgba(241, 245, 249, 0.8);
+  :global(.blog-image-figure) {
+    margin: 20px 0;
+    display: inline-block;
+    max-width: 100%;
+    cursor: pointer;
+    transition: outline 0.15s ease;
+
+    &:hover {
+      outline: 2px dashed #dc2626;
+      outline-offset: 4px;
+      border-radius: 6px;
     }
 
-    :global(.selectedCell) {
-      background-color: rgba(220, 38, 38, 0.1) !important;
-      border-color: #dc2626 !important;
+    img, :global(.blog-content-image) {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      margin: 0 auto;
+    }
+
+    figcaption, :global(.blog-image-caption) {
+      font-size: 13.5px;
+      font-style: italic;
+      color: #475569;
+      margin-top: 6px;
+      line-height: 1.5;
+      font-weight: 500;
+
+      &:empty {
+        display: none !important;
+      }
+    }
+
+    // Alignment classes
+    &:global(.align-left) {
+      float: left;
+      margin: 0 20px 16px 0;
+    }
+    &:global(.align-center) {
+      display: block;
+      margin: 20px auto;
+      float: none;
+      text-align: center;
+    }
+    &:global(.align-right) {
+      float: right;
+      margin: 0 0 16px 20px;
+    }
+
+    // Width classes
+    &:global(.width-100) { width: 100%; }
+    &:global(.width-75) { width: 75%; }
+    &:global(.width-50) { width: 50%; }
+
+    // Caption alignment
+    &:global(.caption-left) figcaption { text-align: left !important; }
+    &:global(.caption-center) figcaption { text-align: center !important; }
+    &:global(.caption-right) figcaption { text-align: right !important; }
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// MODAL OVERLAY CHỈNH SỬA CẤU HÌNH HÌNH ẢNH (IMAGE MODAL)
+// ════════════════════════════════════════════════════════
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(5px);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+}
+
+.modalContent {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  max-width: 640px;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+
+  @keyframes scaleUp {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
     }
   }
 }
-// ════════════════════════════════════════════════════════
-// PHẦN THÊM MỚI (lần 2) vào RichTextEditor.module.scss
-// Thêm vào CUỐI file, sau các class đã thêm lần trước
-// (.hiddenFileInput, .spin, .colorPickerWrap, .colorMenu, .swatch...)
-// ════════════════════════════════════════════════════════
 
-// Toolbar giờ có nhiều nút hơn → cho phép xuống dòng khi không đủ chỗ
-.toolbar {
-  flex-wrap: wrap;
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+
+  h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 700;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    svg {
+      color: #dc2626;
+    }
+  }
 }
 
-// Nút dropdown "Cỡ chữ" — có chữ + mũi tên, khác nút icon thường
-.sizeBtn {
+.modalCloseBtn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+}
+
+.modalBody {
+  padding: 20px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+.modalPreviewWrap {
+  width: 100%;
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  border: 1px dashed #cbd5e1;
+
+  img {
+    max-height: 160px;
+    max-width: 100%;
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.modalReplaceBtn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  padding: 0 8px;
-  white-space: nowrap;
-  min-width: 76px;
-  justify-content: space-between;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.15s ease;
+
+  &:hover:not(:disabled) {
+    background: #fee2e2;
+    border-color: #fca5a5;
+    color: #dc2626;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 }
 
+.modalFormGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 
- 
+  label {
+    font-size: 13.5px;
+    font-weight: 600;
+    color: #334155;
+  }
+}
+
+.modalInput {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.15s;
+
+  &:focus {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+  }
+}
+
+.modalBtnGroup {
+  display: flex;
+  gap: 8px;
+
+  button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 12px;
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s;
+
+    &:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    &.activeBtn {
+      background: #fee2e2;
+      border-color: #fca5a5;
+      color: #dc2626;
+      font-weight: 600;
+    }
+  }
+}
+
+.modalFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  background: #f8fafc;
+  border-top: 1px solid #e2e8f0;
+
+  .rightFooterBtns {
+    display: flex;
+    gap: 10px;
+    margin-left: auto;
+  }
+}
+
+.modalDeleteBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #dc2626;
+    color: #ffffff;
+    border-color: #dc2626;
+  }
+}
+
+.modalCancelBtn {
+  padding: 9px 18px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+
+  &:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+  }
+}
+
+.modalSubmitBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 20px;
+  background: #dc2626;
+  border: 1px solid #dc2626;
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.25);
+  transition: all 0.15s;
+
+  &:hover {
+    background: #b91c1c;
+    border-color: #b91c1c;
+  }
+}
