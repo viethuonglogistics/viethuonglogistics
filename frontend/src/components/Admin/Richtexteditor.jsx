@@ -7,10 +7,15 @@ import TextAlign from '@tiptap/extension-text-align'
 import Highlight from '@tiptap/extension-highlight'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Node, mergeAttributes, Extension } from '@tiptap/core'
+import { Table } from '@tiptap/extension-table'
+import { TableRow } from '@tiptap/extension-table-row'
+import { TableHeader } from '@tiptap/extension-table-header'
+import { TableCell } from '@tiptap/extension-table-cell'
 import {
   Heading2, Bold as BoldIcon, Italic as ItalicIcon, Underline as UnderlineIcon,
   List, ListOrdered, Undo2, Redo2, Image as ImageIcon, Megaphone, Loader2,
   AlignLeft, AlignCenter, AlignRight, AlignJustify, Highlighter, ChevronDown,
+  Table as TableIcon,
 } from 'lucide-react'
 import { blogApi } from '../../services/api'
 import styles from './RichtextEditor.module.scss'
@@ -109,11 +114,13 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
   const sizeBtnRef      = useRef(null)
   const highlightBtnRef = useRef(null)
   const calloutBtnRef   = useRef(null)
+  const tableBtnRef     = useRef(null)
 
   const [uploading, setUploading]           = useState(false)
   const [colorMenuOpen, setColorMenuOpen]   = useState(false)
   const [sizeMenuOpen, setSizeMenuOpen]     = useState(false)
   const [highlightMenuOpen, setHighlightMenuOpen] = useState(false)
+  const [tableMenuOpen, setTableMenuOpen]   = useState(false)
 
   const editor = useEditor({
     extensions: [
@@ -123,6 +130,15 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
       TextStyle, FontSize,
       Highlight.configure({ multicolor: true }),
       CalloutBox,
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          class: 'blog-table',
+        },
+      }),
+      TableRow,
+      TableHeader,
+      TableCell,
     ],
     content: value || '',
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
@@ -259,6 +275,30 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
             ))}
             {editor.isActive('calloutBox') && (
               <button type="button" className={styles.colorMenuItem} onClick={() => { setColorMenuOpen(false); editor.chain().focus().unsetCalloutBox().run() }}>Bỏ khung</button>
+            )}
+          </DropdownMenu>
+        </div>
+
+        {/* Quản lý Bảng */}
+        <div className={styles.colorPickerWrap}>
+          <button ref={tableBtnRef} type="button" className={editor.isActive('table') ? styles.active : ''} onClick={() => setTableMenuOpen(v => !v)} title="Chèn / Quản lý Bảng">
+            <TableIcon size={16} />
+          </button>
+          <DropdownMenu anchorRef={tableBtnRef} open={tableMenuOpen}>
+            {!editor.isActive('table') ? (
+              <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(); }}>
+                Chèn bảng mới (3x3)
+              </button>
+            ) : (
+              <>
+                <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().addRowBefore().run(); }}>Thêm dòng phía trên</button>
+                <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().addRowAfter().run(); }}>Thêm dòng phía dưới</button>
+                <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().addColumnBefore().run(); }}>Thêm cột bên trái</button>
+                <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().addColumnAfter().run(); }}>Thêm cột bên phải</button>
+                <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().deleteRow().run(); }}>Xóa dòng</button>
+                <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().deleteColumn().run(); }}>Xóa cột</button>
+                <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().deleteTable().run(); }} style={{ color: '#dc2626' }}>Xóa bảng</button>
+              </>
             )}
           </DropdownMenu>
         </div>

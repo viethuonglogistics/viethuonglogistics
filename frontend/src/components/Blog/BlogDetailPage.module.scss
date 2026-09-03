@@ -352,6 +352,48 @@
   color: #1c5e2c;
   border: none;
 }
+
+// ── CSS Hiển thị Bảng (Table) trong bài viết ──
+:global(table), :global(.blog-table) {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0;
+  font-size: 14.5px;
+  background: #ffffff;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+
+  @media (min-width: 768px) {
+    display: table;
+    white-space: normal;
+  }
+
+  th, td, :global(th), :global(td) {
+    border: 1px solid #cbd5e1;
+    padding: 12px 16px;
+    text-align: left;
+    line-height: 1.6;
+    vertical-align: top;
+  }
+
+  th, :global(th) {
+    background-color: #f1f5f9;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  tr:nth-child(even), :global(tr:nth-child(even)) {
+    background-color: #f8fafc;
+  }
+
+  tr:hover, :global(tr:hover) {
+    background-color: rgba(241, 245, 249, 0.9);
+  }
+}
 }
 
 // ─── Sidebar ───────────────────────────────────────────────────────────────
