@@ -8,8 +8,8 @@ import Seo from '../Seo/Seo'
 // ── Trụ sở chính ─────────────────────────────────────────────
 const HEADQUARTER = {
   id: 'hq',
-  name: '58 Phước Lý 9 – Phường Hòa Khánh – TP. Đà Nẵng ',
-  address: '58 Phước Lý 9 – Phường Hòa Khánh – TP. Đà Nẵng',
+  name: '62 Phước Lý 9 – Phường Hòa Khánh – TP. Đà Nẵng ',
+  address: '62 Phước Lý 9 – Phường Hòa Khánh – TP. Đà Nẵng',
   email: 'facebook.com/gomsuviethuong',
   phone: '0905.386.888',
   lat: 16.0707,

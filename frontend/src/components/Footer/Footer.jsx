@@ -65,7 +65,7 @@ export default function Footer() {
           <h4 className={styles.colTitle}>TRỤ SỞ CHÍNH</h4>
           <div className={styles.addressRow}>
             <MapPin size={15} className={styles.pinIcon}/>
-            <p>58 Phước Lý 9 – Phường Hòa Khánh – TP.Đà Nẵng</p>
+            <p>62 Phước Lý 9 – Phường Hòa Khánh – TP. Đà Nẵng</p>
           </div>
           <p>Hotline: <a href="tel:0905386888" className={styles.hotline}>0905.386.888</a></p>
           <p>Email: <a href="mailto:info@vantaiviethuong.com" className={styles.emailLink}>info@vantaiviethuong.com</a></p>
@@ -75,7 +75,7 @@ export default function Footer() {
         <div className={styles.officeCol}>
           <h4 className={styles.colTitle}>VĂN PHÒNG ĐẠI DIỆN</h4>
           {[
-            { city: 'ĐÀ NẴNG',     addr: '58 Phước Lý 9 – Phường Hòa Khánh – TP. Đà Nẵng' },
+            { city: 'ĐÀ NẴNG',     addr: '62 Phước Lý 9 – Phường Hòa Khánh – TP. Đà Nẵng' },
             { city: 'ĐÀ NẴNG',     addr: '133 Trung Lương 14, Phường Hòa Xuân, TP. Đà Nẵng' },
             { city: 'ĐÀ NẴNG',     addr: 'Đường Đ1, Thôn Đồng Yên, Xã Duy Xuyên, TP. Đà Nẵng' },
             { city: 'HỒ CHÍ MINH', addr: '246 Nguyễn Duy Trinh, P. Bình Trưng, TP. Hồ Chí Minh' },

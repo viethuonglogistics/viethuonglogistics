@@ -87,7 +87,7 @@ const DEFAULT_HOME_PAGE = {
   footer: {
     company_name: 'CÔNG TY TNHH GIAO NHẬN VẬN TẢI VIỆT HƯƠNG',
     tax_code: '0402058419',
-    address: '58 Phước Lý 9 – Phường Hòa Khánh – TP. Đà Nẵng',
+    address: '62 Phước Lý 9 – Phường Hòa Khánh – TP. Đà Nẵng',
     hotline: '0905.386.888',
     email: 'info@viethuonglogistics.com',
     email_secondary: 'xnkdn.info@viethuongceramics.com',
@@ -96,7 +96,7 @@ const DEFAULT_HOME_PAGE = {
     instagram_url: 'https://instagram.com',
     zalo_url: 'https://zalo.me',
     offices: [
-      { city: 'ĐÀ NẴNG', addr: '58 Phước Lý 9 – Phường Hòa Khánh – TP. Đà Nẵng' },
+      { city: 'ĐÀ NẴNG', addr: '62 Phước Lý 9 – Phường Hòa Khánh – TP. Đà Nẵng' },
       { city: 'ĐÀ NẴNG', addr: '133 Trung Lương 14, Phường Hòa Xuân, TP. Đà Nẵng' },
       { city: 'ĐÀ NẴNG', addr: 'Đường Đ1, Thôn Đồng Yên, Xã Duy Xuyên, TP. Đà Nẵng' },
       { city: 'HỒ CHÍ MINH', addr: '246 Nguyễn Duy Trinh, P. Bình Trưng, TP. Hồ Chí Minh' },

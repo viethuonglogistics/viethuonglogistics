@@ -87,7 +87,7 @@ const CONTACT_INFO = [
   {
     icon: <MapPin size={15} />,
     label: 'Trụ sở chính',
-    value: '58 Phước Lý 9, Phường Hòa Khánh, TP. Đà Nẵng',
+    value: '62 Phước Lý 9, Phường Hòa Khánh, TP. Đà Nẵng',
   },
   {
     icon: <Phone size={15} />,
