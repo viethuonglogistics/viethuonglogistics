@@ -1,5 +1,5 @@
 const RESEND_API_URL = 'https://api.resend.com/emails';
-const DEFAULT_RECIPIENT = 'ductri09876@gmail.com';
+const DEFAULT_RECIPIENT = 'it@viethuongceramics.com';
 const DEFAULT_FROM = 'Viet Huong Logistics <onboarding@resend.dev>';
 const DEFAULT_EMAIL_LOGO_PATH = '/static/email/logo-email.png';
 
@@ -38,7 +38,7 @@ function getDefaultEmailLogoUrl() {
   const baseUrl = String(
     process.env.PUBLIC_API_URL
     || process.env.RENDER_EXTERNAL_URL
-    || 'https://viethuonglogistics.onrender.com'
+    || 'https://viethuonglogistics-un9p.onrender.com'
   ).trim().replace(/\/+$/, '');
 
   return baseUrl ? `${baseUrl}${DEFAULT_EMAIL_LOGO_PATH}` : '';
@@ -250,4 +250,94 @@ async function sendFaqNotification(inquiry) {
   });
 }
 
-module.exports = { sendContactNotification, sendFaqNotification };
+const REMINDER_TYPE_NAMES = {
+  call: 'Gọi điện tư vấn',
+  email: 'Gửi email báo giá',
+  quote: 'Lập & gửi báo giá',
+  meeting: 'Gặp gỡ khách hàng',
+  other: 'Công việc khác',
+};
+
+const REMINDER_PRIORITY_NAMES = {
+  low: 'Thấp',
+  normal: 'Bình thường',
+  high: 'Khẩn cấp / Ưu tiên cao',
+};
+
+function formatVietnamDateTime(dateValue) {
+  if (!dateValue) return 'Không xác định';
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return String(dateValue);
+  return new Intl.DateTimeFormat('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'Asia/Ho_Chi_Minh',
+  }).format(date);
+}
+
+async function sendReminderNotification({ reminder, customer, user }) {
+  const customerName = escapeHtml(customer?.full_name || 'Khách hàng');
+  const customerPhone = escapeHtml(customer?.phone || 'Chưa có');
+  const customerEmail = escapeHtml(customer?.email || 'Chưa cung cấp');
+  const customerCompany = escapeHtml(customer?.company || '');
+  const reminderTitle = escapeHtml(reminder?.title || 'Lịch hẹn CRM');
+  const reminderTime = formatVietnamDateTime(reminder?.remind_at);
+  const typeLabel = REMINDER_TYPE_NAMES[reminder?.reminder_type] || 'Lịch hẹn';
+  const priorityLabel = REMINDER_PRIORITY_NAMES[reminder?.priority] || 'Bình thường';
+  const notes = escapeHtml(reminder?.notes || 'Không có ghi chú thêm.').replace(/\n/g, '<br>');
+  const creatorName = escapeHtml(user?.full_name || user?.username || 'Quản trị viên');
+
+  const crmUrl = `${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/crm`;
+
+  return sendMail({
+    subject: `[Việt Hương CRM] Lịch hẹn: ${reminder.title} - ${customer.full_name}`,
+    replyTo: customer.email || undefined,
+    text: [
+      `THÔNG BÁO LỊCH HẸN CRM - VIỆT HƯƠNG LOGISTICS`,
+      `-----------------------------------------`,
+      `Tiêu đề: ${reminder.title}`,
+      `Thời gian hẹn: ${reminderTime}`,
+      `Loại lịch hẹn: ${typeLabel}`,
+      `Mức độ ưu tiên: ${priorityLabel}`,
+      `Người phụ trách: ${creatorName}`,
+      ``,
+      `THÔNG TIN KHÁCH HÀNG:`,
+      `Họ tên: ${customer.full_name}`,
+      `Điện thoại: ${customer.phone}`,
+      `Email: ${customer.email || 'Chưa cung cấp'}`,
+      ...(customer.company ? [`Công ty: ${customer.company}`] : []),
+      ``,
+      `Ghi chú:`,
+      reminder.notes || 'Không có ghi chú.',
+      ``,
+      `Mở CRM: ${crmUrl}`,
+    ].join('\n'),
+    html: renderEmailTemplate({
+      eyebrow: 'Lịch hẹn CRM mới',
+      title: reminderTitle,
+      description: `Lịch hẹn được tạo bởi ${creatorName} cho khách hàng ${customerName}.`,
+      reference: `CRM-${reminder.id || 'NEW'}`,
+      rows: [
+        { label: 'Khách hàng', value: customerName },
+        { label: 'Điện thoại', value: customerPhone },
+        { label: 'Email khách', value: customerEmail },
+        ...(customerCompany ? [{ label: 'Công ty', value: customerCompany }] : []),
+        { label: 'Thời gian hẹn', value: reminderTime },
+        { label: 'Loại công việc', value: typeLabel },
+        { label: 'Mức độ ưu tiên', value: priorityLabel },
+        { label: 'Người phụ trách', value: creatorName },
+      ],
+      messageLabel: 'Ghi chú lịch hẹn',
+      message: notes,
+      action: {
+        label: 'Mở trang CRM xử lý',
+        href: crmUrl,
+      },
+    }),
+  });
+}
+
+module.exports = { sendContactNotification, sendFaqNotification, sendReminderNotification };

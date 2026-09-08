@@ -395,7 +395,7 @@ export default function AdminCrm() {
       const activityResponse = await crmApi.getActivities(selectedContact.id)
       setActivities(activityResponse.data || [])
       window.dispatchEvent(new Event('vh-admin-notifications-refresh'))
-      showToast('Đã tạo lịch hẹn.')
+      showToast(response.message || 'Đã tạo lịch hẹn.')
     } catch (error) {
       showToast(error.message || 'Không thể tạo lịch hẹn.', 'error')
     } finally {
@@ -586,7 +586,7 @@ export default function AdminCrm() {
                     <span className={styles.reminderSwitch} aria-hidden="true" />
                     <span>
                       <strong>Nhắc lịch qua email</strong>
-                      <small>Lưu lựa chọn trước; hệ thống gửi tự động sẽ được kích hoạt sau.</small>
+                      <small>Gửi email thông báo chi tiết lịch hẹn ngay tới quản trị viên.</small>
                     </span>
                   </label>
                   <button type="submit" disabled={savingReminder}>

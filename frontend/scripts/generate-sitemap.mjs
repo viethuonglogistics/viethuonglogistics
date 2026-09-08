@@ -2,7 +2,7 @@ import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
 const SITE_URL = 'https://viethuonglogistics.com'
-const API_URL = (process.env.VITE_API_URL || 'https://viethuonglogistics.onrender.com/api')
+const API_URL = (process.env.VITE_API_URL || 'https://viethuonglogistics-un9p.onrender.com/api')
   .replace(/\/+$/, '')
 
 const staticPages = [

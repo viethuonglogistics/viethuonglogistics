@@ -14,12 +14,13 @@ let databaseError = null;
 
 app.use(cors({
   origin: [
+    'https://viethuonglogistics-un9p.onrender.com',
     'https://vantaiviethuong.onrender.com',
     'https://viet-huong-logistics.vercel.app',
     'https://viethuonglogistics.com',
-    'http://viethuonglogistics.com',      // ← thêm dòng này
+    'http://viethuonglogistics.com',
     'www.viethuonglogistics.com',
-    'https://www.viethuonglogistics.com', // ← và dòng này
+    'https://www.viethuonglogistics.com',
     process.env.FRONTEND_URL || 'http://localhost:5173',
     'http://localhost:5173',
     'http://127.0.0.1:5173',

@@ -1,5 +1,6 @@
 const { pool } = require('../config/database');
 const { recordAdminAudit } = require('../services/adminAuditService');
+const { sendReminderNotification } = require('../services/emailService');
 
 const PIPELINE_STAGES = [
   { key: 'new_lead', label: 'Khách mới', color: '#64748b' },
@@ -384,7 +385,25 @@ const createReminder = async (req, res) => {
       userId: req.user?.id,
     });
 
-    res.status(201).json({ success: true, message: 'Đã tạo lịch hẹn.', data: rows[0] });
+    let emailSent = false;
+    if (emailEnabled) {
+      try {
+        emailSent = await sendReminderNotification({
+          reminder: rows[0],
+          customer: rows[0],
+          user: req.user,
+        });
+      } catch (mailError) {
+        console.error('[MAIL] Không thể gửi email lịch hẹn CRM:', mailError.message);
+      }
+    }
+
+    res.status(201).json({
+      success: true,
+      message: emailSent ? 'Đã tạo lịch hẹn và gửi email thông báo thành công!' : 'Đã tạo lịch hẹn.',
+      email_sent: emailSent,
+      data: rows[0],
+    });
   } catch (error) {
     console.error('createReminder error:', error);
     res.status(500).json({ success: false, message: 'Không thể tạo lịch hẹn.' });
