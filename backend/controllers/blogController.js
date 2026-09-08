@@ -43,7 +43,7 @@ const getAdminBlogCategories = async (req, res) => {
     const [rows] = await pool.query(
       `SELECT c.*, COUNT(b.id) AS post_count
        FROM blog_categories c
-       LEFT JOIN blogs b ON b.category = c.name
+       LEFT JOIN blogs b ON b.category COLLATE utf8mb4_unicode_ci = c.name COLLATE utf8mb4_unicode_ci
        GROUP BY c.id
        ORDER BY c.sort_order ASC, c.id ASC`
     );

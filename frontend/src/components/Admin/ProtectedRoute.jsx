@@ -2,8 +2,8 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
-export default function ProtectedRoute({ children }) {
-  const { isLoggedIn, loading } = useAuth()
+export default function ProtectedRoute({ children, allowedRoles }) {
+  const { isLoggedIn, loading, user } = useAuth()
   const location = useLocation()
 
   // Đang kiểm tra token → không render gì cả (tránh flash)
@@ -36,6 +36,11 @@ export default function ProtectedRoute({ children }) {
   // Chưa đăng nhập → chuyển về trang login, lưu lại URL muốn vào
   if (!isLoggedIn) {
     return <Navigate to="/login" state={{ from: location }} replace />
+  }
+
+  // Nếu route yêu cầu role cụ thể mà user không thỏa mãn -> điều hướng về /admin
+  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user?.role)) {
+    return <Navigate to="/admin" replace />
   }
 
   return children

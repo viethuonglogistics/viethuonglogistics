@@ -68,11 +68,16 @@
 +--------------------+       +-------------------+  +------------------+
 ```
 
-### Môi trường Localhost (Chuẩn phát triển)
+### Môi trường Localhost (Chuẩn phát triển bắt buộc)
 - **Frontend**: `http://localhost:5173/` (Vite dev server)
 - **Backend**: `http://localhost:5001/` (Express API)
 - **MySQL Local**: `localhost:3306`, User: `root`, DB: `vantaiviethuong`
 - **File Build Artifact**: `dist.zip` (Tạo từ thư mục `frontend/dist`) lưu tại Desktop để người dùng dễ dàng upload cPanel khi cần.
+- **Quy định bất di bất dịch về `.env`**:
+  - Mọi thao tác code, thêm, sửa, xóa, debug hay chạy test luôn luôn giữ tất cả file `.env` ở chế độ **Localhost**.
+  - Tuyệt đối cấm để `.env` ở chế độ Deploy khi đang phát triển.
+  - **Chỉ khi nào có mệnh lệnh/chỉ thị trực tiếp từ Sếp (User)**: Mới được phép chuyển `.env` sang thông số Deploy để chuẩn bị hoặc thực hiện triển khai thực tế.
+
 
 ---
 

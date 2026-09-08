@@ -2,8 +2,9 @@ const { pool } = require('../config/database');
 const { applySnapshot, insertRevision, parseJson } = require('../services/cmsRevisionService');
 
 const REVISION_MODULES = ['home', 'about', 'services'];
-const AUDIT_MODULES = ['faq', 'faq_content', 'blogs', 'branches', 'contacts'];
+const AUDIT_MODULES = ['faq', 'faq_content', 'blogs', 'branches', 'contacts', 'admin_users'];
 const ALL_MODULES = [...REVISION_MODULES, ...AUDIT_MODULES];
+
 const MAX_CHANGES_PER_ENTRY = 100;
 
 function valuesEqual(left, right) {

@@ -9,9 +9,9 @@ const {
 
 const router = express.Router();
 
-router.get('/', authMiddleware, getAuditHistory);
-router.post('/revision/:id/restore', authMiddleware, requireRole('superadmin', 'admin'), restoreRevisionEntry);
-router.post('/bulk-delete', authMiddleware, requireRole('superadmin', 'admin'), bulkDeleteAuditEntries);
-router.delete('/:source/:id', authMiddleware, requireRole('superadmin', 'admin'), deleteAuditEntry);
+router.get('/', authMiddleware, requireRole('superadmin'), getAuditHistory);
+router.post('/revision/:id/restore', authMiddleware, requireRole('superadmin'), restoreRevisionEntry);
+router.post('/bulk-delete', authMiddleware, requireRole('superadmin'), bulkDeleteAuditEntries);
+router.delete('/:source/:id', authMiddleware, requireRole('superadmin'), deleteAuditEntry);
 
 module.exports = router;

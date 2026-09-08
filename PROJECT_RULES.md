@@ -27,7 +27,12 @@ Tài liệu này định nghĩa các nguyên tắc cốt lõi, quy chuẩn kỹ 
 
 ## 2. AN TOÀN MÔI TRƯỜNG & DỮ LIỆU (ENVIRONMENT & SAFETY RULES)
 
-1. **MÔI TRƯỜNG LOCAL LÀ TRÊN HẾT**:
+1. **QUY TẮC BẤT DI BẤT DỊCH VỀ FILE .ENV & LOCALHOST**:
+   - Khi bắt đầu công việc, kiểm tra chức năng, thêm, sửa, xóa bất kỳ tính năng nào: **BẮT BUỘC PHẢI CHUYỂN TẤT CẢ FILE `.env` (cả `backend/.env` và `frontend/.env`) VÀ CÁC CẤU HÌNH LIÊN QUAN VỀ LOCALHOST NGAY LẬP TỨC**.
+   - Tuyệt đối **KHÔNG ĐƯỢC PHÉP** để các file `.env` ở cấu hình Deploy / Production (Aiven Cloud, Render, Domain production) trong lúc code hoặc chạy test.
+   - **CHỈ KHI CÓ MỆNH LỆNH RÕ RÀNG TỪ NGƯỜI DÙNG (SẾP)**: Agent mới được phép chỉnh sửa các file `.env` và các cấu hình liên quan để chuẩn bị triển khai Deploy thật sự.
+
+2. **MÔI TRƯỜNG LOCAL LÀ TRÊN HẾT**:
    - Toàn bộ quá trình code, chỉnh sửa, debug và kiểm thử ban đầu phải diễn ra **100% trên Localhost**:
      - Frontend Dev Server: `http://localhost:5173/`
      - Backend API Server: `http://localhost:5001/api`

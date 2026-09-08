@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import {
   Building2, Columns3, FileText, HelpCircle, Home, Info, LayoutDashboard,
-  History, LogOut, Newspaper, PanelLeftClose, PanelLeftOpen, Phone, Truck,
+  History, LogOut, Newspaper, PanelLeftClose, PanelLeftOpen, Phone, Truck, Users,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { contactApi, crmApi, faqApi } from '../../services/api'
@@ -20,8 +20,10 @@ const navItems = [
   { icon: HelpCircle, label: 'Giải đáp', to: '/admin/faq' },
   { icon: Phone, label: 'Liên hệ', to: '/admin/contacts' },
   { icon: Columns3, label: 'CRM Liên Hệ', to: '/admin/crm' },
-  { icon: History, label: 'Lịch sử chỉnh sửa', to: '/admin/history' },
+  { icon: Users, label: 'Tài khoản Admin', to: '/admin/users', roles: ['superadmin'] },
+  { icon: History, label: 'Lịch sử chỉnh sửa', to: '/admin/history', roles: ['superadmin'] },
 ]
+
 
 export default function AdminSidebar({ collapsed = false, onToggleCollapse }) {
   const { user, logout } = useAuth()
@@ -99,30 +101,32 @@ export default function AdminSidebar({ collapsed = false, onToggleCollapse }) {
       </div>
 
       <nav className={styles.sideNav}>
-        {navItems.map((item) => {
-          const Icon = item.icon
-          const notificationCount = item.to === '/admin/contacts'
-            ? notifications.contacts
-            : item.to === '/admin/faq'
-              ? notifications.faq
-              : item.to === '/admin/crm'
-                ? notifications.crm
-                : 0
-          return (
-            <button
-              key={item.to}
-              className={`${styles.navItem} ${isActive(item.to) ? styles.active : ''}`}
-              onClick={() => navigate(item.to)}
-              title={collapsed ? `${item.label}${notificationCount ? ` (${notificationCount} mới)` : ''}` : undefined}
-            >
-              <Icon size={16} strokeWidth={1.8} />
-              <span className={styles.navLabel}>{item.label}</span>
-              {notificationCount > 0 && (
-                <span className={styles.navBadge}>{notificationCount > 99 ? '99+' : notificationCount}</span>
-              )}
-            </button>
-          )
-        })}
+        {navItems
+          .filter((item) => !item.roles || item.roles.includes(user?.role))
+          .map((item) => {
+            const Icon = item.icon
+            const notificationCount = item.to === '/admin/contacts'
+              ? notifications.contacts
+              : item.to === '/admin/faq'
+                ? notifications.faq
+                : item.to === '/admin/crm'
+                  ? notifications.crm
+                  : 0
+            return (
+              <button
+                key={item.to}
+                className={`${styles.navItem} ${isActive(item.to) ? styles.active : ''}`}
+                onClick={() => navigate(item.to)}
+                title={collapsed ? `${item.label}${notificationCount ? ` (${notificationCount} mới)` : ''}` : undefined}
+              >
+                <Icon size={16} strokeWidth={1.8} />
+                <span className={styles.navLabel}>{item.label}</span>
+                {notificationCount > 0 && (
+                  <span className={styles.navBadge}>{notificationCount > 99 ? '99+' : notificationCount}</span>
+                )}
+              </button>
+            )
+          })}
       </nav>
 
       <div className={styles.sideFooter}>
@@ -130,7 +134,9 @@ export default function AdminSidebar({ collapsed = false, onToggleCollapse }) {
           <div className={styles.avatar}>{user?.full_name?.[0] || user?.username?.[0] || 'A'}</div>
           <div className={styles.userText}>
             <div className={styles.userName}>{user?.full_name || user?.username}</div>
-            <div className={styles.userRole}>{user?.role || 'Admin'}</div>
+            <div className={styles.userRole}>
+              {user?.role === 'superadmin' ? 'Super Admin' : 'Nhân viên (Admin)'}
+            </div>
           </div>
         </button>
         <button className={styles.logoutBtn} onClick={handleLogout} title={collapsed ? 'Đăng xuất' : undefined}>
@@ -141,3 +147,4 @@ export default function AdminSidebar({ collapsed = false, onToggleCollapse }) {
     </aside>
   )
 }
+

@@ -12,7 +12,7 @@ const login = async (req, res) => {
     }
 
     const [rows] = await pool.query(
-      'SELECT * FROM admin_users WHERE username = ? AND is_active = 1',
+      'SELECT * FROM admin_users WHERE username = ?',
       [username]
     );
 
@@ -21,14 +21,40 @@ const login = async (req, res) => {
     }
 
     const user = rows[0];
+
+    // Kiểm tra tài khoản có bị khóa không
+    if (!user.is_active) {
+      return res.status(403).json({
+        success: false,
+        message: 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ Sếp / Quản trị viên.',
+      });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
       return res.status(401).json({ success: false, message: 'Tên đăng nhập hoặc mật khẩu không đúng.' });
     }
 
-    // Cập nhật last_login
-    await pool.query('UPDATE admin_users SET last_login = NOW() WHERE id = ?', [user.id]);
+    // Lấy IP của người dùng đăng nhập
+    const clientIp = (req.headers['x-forwarded-for']?.split(',')[0] || req.ip || req.socket?.remoteAddress || '127.0.0.1').replace('::ffff:', '');
+
+    // Cập nhật last_login và last_login_ip
+    await pool.query('UPDATE admin_users SET last_login = NOW(), last_login_ip = ? WHERE id = ?', [clientIp, user.id]);
+
+    // Ghi audit log đăng nhập
+    const { recordAdminAudit } = require('../services/adminAuditService');
+    await recordAdminAudit({
+      module: 'admin_users',
+      action: 'update',
+      entityType: 'admin_user',
+      entityId: user.id,
+      summary: `Đăng nhập hệ thống: ${user.username} (IP: ${clientIp})`,
+      before: null,
+      after: { last_login_ip: clientIp },
+      userId: user.id,
+    });
+
 
     const token = jwt.sign(
       { id: user.id, username: user.username, role: user.role },

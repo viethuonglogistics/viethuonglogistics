@@ -142,6 +142,7 @@
 .cyan { background: #cffafe; color: #0e7490; }
 .pink { background: #fce7f3; color: #be185d; }
 .gray { background: #e5e7eb; color: #374151; }
+.amber { background: #fef3c7; color: #92400e; }
 .dot.red { background: #ef4444; }
 .dot.blue { background: #3b82f6; }
 .dot.green { background: #22c55e; }
@@ -150,6 +151,8 @@
 .dot.cyan { background: #06b6d4; }
 .dot.pink { background: #ec4899; }
 .dot.gray { background: #6b7280; }
+.dot.amber { background: #f59e0b; }
+
 
 .list { display: flex; flex-direction: column; gap: 10px; }
 

@@ -305,3 +305,16 @@ export const faqContentApi = {
   deleteItem: (id) =>
     request(`/faq-content/admin/items/${id}`, { method: 'DELETE' }),
 }
+
+// ════════════════════════════════════════════════════════════
+// USER / ADMIN ACCOUNT MANAGEMENT (Dành riêng cho Super Admin)
+// ════════════════════════════════════════════════════════════
+export const userApi = {
+  getAll: () => request('/users'),
+  create: (data) => request('/users', { method: 'POST', body: JSON.stringify(data) }),
+  update: (id, data) => request(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  toggleStatus: (id) => request(`/users/${id}/toggle-status`, { method: 'POST' }),
+  resetPassword: (id, data) => request(`/users/${id}/reset-password`, { method: 'POST', body: JSON.stringify(data) }),
+  delete: (id) => request(`/users/${id}`, { method: 'DELETE' }),
+}
+

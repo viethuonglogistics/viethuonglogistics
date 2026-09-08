@@ -34,8 +34,10 @@ import AdminFaqContent from './components/Admin/AdminFaqContent'
 import AdminContacts from './components/Admin/AdminContacts'
 import AdminBranches from './components/Admin/AdminBranches'
 import AdminProfile from './components/Admin/AdminProfile'
+import AdminUsers from './components/Admin/AdminUsers'
 import AdminCmsHistory from './components/Admin/AdminCmsHistory'
 import AdminCrm from './components/Admin/AdminCrm'
+
 import Seo, { SITE_URL } from './components/Seo/Seo'
 gsap.registerPlugin(ScrollTrigger)
 
@@ -148,8 +150,8 @@ function PublicLayout() {
 function AppInner() {
   const location = useLocation()
   const isAdminArea = location.pathname.startsWith('/admin') || location.pathname === '/login'
-  const adminPage = (element) => (
-    <ProtectedRoute>
+  const adminPage = (element, allowedRoles) => (
+    <ProtectedRoute allowedRoles={allowedRoles}>
       <AdminLayout>{element}</AdminLayout>
     </ProtectedRoute>
   )
@@ -171,13 +173,15 @@ function AppInner() {
           <Route path="/admin/crm" element={adminPage(<AdminCrm />)} />
           <Route path="/admin/branches" element={adminPage(<AdminBranches />)} />
           <Route path="/admin/profile" element={adminPage(<AdminProfile />)} />
-          <Route path="/admin/history" element={adminPage(<AdminCmsHistory />)} />
+          <Route path="/admin/users" element={adminPage(<AdminUsers />, ['superadmin'])} />
+          <Route path="/admin/history" element={adminPage(<AdminCmsHistory />, ['superadmin'])} />
           <Route path="/admin/settings" element={<Navigate to="/admin/home" replace />} />
           <Route path="/admin/*" element={adminPage(<AdminDashboard />)} />
         </Routes>
       </>
     )
   }
+
 
   return <PublicLayout />
 }

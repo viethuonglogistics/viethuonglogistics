@@ -8,6 +8,8 @@
 # Thư mục công cụ quản lý local & dump dữ liệu CSDL / Backup ảnh
 tools/
 *.sql
+!backend/migrations/*.sql
+
 
 # Dependency directories
 node_modules/
@@ -28,3 +30,7 @@ backend/dist/
 backend/public/uploads/*
 !backend/public/uploads/.gitkeep
 *.zip
+
+# Temporary test scripts & scratch
+scratch/
+

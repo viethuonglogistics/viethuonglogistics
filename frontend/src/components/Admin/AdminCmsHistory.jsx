@@ -18,7 +18,9 @@ const MODULES = {
   blogs: { label: 'Tin tức', tone: 'cyan' },
   branches: { label: 'Chi nhánh', tone: 'pink' },
   contacts: { label: 'Liên hệ', tone: 'gray' },
+  admin_users: { label: 'Tài khoản & Nhân viên', tone: 'amber' },
 }
+
 
 const FIELD_LABELS = {
   hero: 'Hero đầu trang',
@@ -89,6 +91,11 @@ const FIELD_LABELS = {
   admin_note: 'Ghi chú nội bộ',
   last_action: 'Hành động CRM',
   last_action_at: 'Thời gian xử lý CRM',
+  username: 'Tên đăng nhập',
+  role: 'Phân quyền',
+  password_reset: 'Mật khẩu',
+  last_login_ip: 'Địa chỉ IP đăng nhập',
+  last_login: 'Thời gian đăng nhập gần nhất',
 }
 
 function formatDate(value) {
@@ -103,7 +110,8 @@ function formatDate(value) {
   }).format(date)
 }
 
-function formatPath(path = '') {
+function formatPath(path = '', module = '') {
+  if (module === 'admin_users' && path === 'is_active') return 'Trạng thái tài khoản'
   return path
     .split('.')
     .map(segment => {
@@ -116,6 +124,17 @@ function formatPath(path = '') {
 
 function formatValue(value, path = '') {
   if (value === null || value === undefined || value === '') return 'Trống'
+  if (path === 'role') {
+    if (value === 'superadmin') return 'SUPER ADMIN'
+    if (value === 'admin') return 'ADMIN / NHÂN VIÊN'
+  }
+  if (path === 'is_active') {
+    if (value === 1 || value === true) return 'Đang hoạt động'
+    if (value === 0 || value === false) return 'Đang bị khóa'
+  }
+  if (path === 'last_login' && typeof value === 'string' && !Number.isNaN(Date.parse(value))) {
+    return formatDate(value)
+  }
   const isFlag = /(?:^|\.)(?:is_active|enabled|show_[^.]+)$/.test(path)
   if (value === true || (isFlag && value === 1)) return 'Bật / Hiển thị'
   if (value === false || (isFlag && value === 0)) return 'Tắt / Ẩn'
@@ -124,10 +143,12 @@ function formatValue(value, path = '') {
 }
 
 function actionLabel(action) {
-  if (action === 'added') return 'Đã thêm'
-  if (action === 'removed') return 'Đã xoá'
+  if (action === 'added' || action === 'create') return 'Đã thêm'
+  if (action === 'removed' || action === 'delete') return 'Đã xoá'
+  if (action === 'status') return 'Đổi trạng thái'
   return 'Đã cập nhật'
 }
+
 
 function getEntryKey(entry) {
   return `${entry.source}:${entry.source_id}`
@@ -377,7 +398,7 @@ export default function AdminCmsHistory() {
                         {entry.changes.map((change, index) => (
                           <div className={styles.change} key={`${change.path}-${index}`}>
                             <div className={styles.changeHeader}>
-                              <strong>{formatPath(change.path)}</strong>
+                              <strong>{formatPath(change.path, entry.module)}</strong>
                               <span className={styles[change.action]}>{actionLabel(change.action)}</span>
                             </div>
                             <div className={styles.values}>

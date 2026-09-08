@@ -13,6 +13,8 @@ Tài liệu này quy định quy trình chuẩn mực 7 bước (**7-Step Workfl
 2. Xác định các file, component, function, API, database schema và logic liên quan.
 3. Kiểm tra mã nguồn hiện tại bằng `view_file`, `grep_search` trước khi kết luận.
 4. **Tuyệt đối không suy đoán** trạng thái mã nguồn khi chưa đọc file thực tế.
+5. **CHUYỂN FILE .ENV VỀ LOCAL TRƯỚC TIÊN**: Kiểm tra cả `backend/.env` và `frontend/.env`. Bắt buộc chuyển toàn bộ về cấu hình Localhost (`localhost:5001`, `localhost:3306`) trước khi viết code, sửa code hay khởi chạy server thử nghiệm.
+
 
 ---
 
@@ -101,8 +103,11 @@ Mỗi khi hoàn thành nhiệm vụ, Agent xuất báo cáo có cấu trúc bắ
 
 ## ⛔ DANH SÁCH HÀNH VI BỊ NGHIÊM CẤM (PROHIBITED ACTIONS)
 
+- ❌ Thao tác thêm, sửa, xóa chức năng hoặc khởi chạy server khi các file `.env` chưa được chuyển về Localhost.
+- ❌ Tự ý đổi các file `.env` hoặc cấu hình liên quan sang chế độ Deploy khi chưa có mệnh lệnh trực tiếp bằng văn bản từ Người dùng (Sếp).
 - ❌ Tự ý chạy `git push` lên GitHub remote khi chưa được yêu cầu.
 - ❌ Tự ý chạy lệnh migration hoặc chỉnh sửa dữ liệu trên Aiven Cloud DB.
 - ❌ Tự ý chỉnh sửa biến môi trường production trên Render hoặc hosting cPanel.
 - ❌ Tự ý tạo trang đăng nhập thứ hai hoặc sidebar/dashboard thứ hai khi thêm role mới.
 - ❌ Khẳng định nhiệm vụ đã xong nhưng chưa chạy build hoặc test kiểm chứng.
+

@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').resolve(__dirname, '.env') });
 
 const express = require('express');
 const path = require('path');
@@ -54,6 +54,7 @@ app.use('/api/faq-inquiries', faqRoutes)
 app.use('/api/faq-content', require('./routes/Faqcontent'))
 app.use('/api/cms-revisions', require('./routes/cmsRevisions'));
 app.use('/api/crm', require('./routes/crm'));
+app.use('/api/users', require('./routes/users'));
 // Health check
 app.get('/api/health', (req, res) => {
   const databaseConnected = databaseStatus === 'connected';
