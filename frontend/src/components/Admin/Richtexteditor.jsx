@@ -183,6 +183,202 @@ const HIGHLIGHT_COLORS = [
   { label: 'Cam', value: '#ffd9a8' },
 ]
 
+// ── Hàm chuẩn hóa và làm sạch HTML khi Copy/Paste từ Word / Excel / Web ──
+function cleanWordTableHtml(rawHtml) {
+  if (!rawHtml || typeof rawHtml !== 'string') return rawHtml
+
+  let html = rawHtml
+
+  // 1. Nếu có đánh dấu Fragment của Word/Windows/Mac clipboard, chỉ lấy nội dung trong fragment
+  const fragmentMatch = /<!--\s*StartFragment\s*-->([\s\S]*?)<!--\s*EndFragment\s*-->/i.exec(html)
+  if (fragmentMatch && fragmentMatch[1]) {
+    html = fragmentMatch[1]
+  }
+
+  // 2. Loại bỏ các comment điều kiện và rác từ Microsoft Office
+  html = html.replace(/<!--\[if[\s\S]*?\]>[\s\S]*?<!\[endif\]-->/gi, '')
+  html = html.replace(/<!\[if[\s\S]*?\]>[\s\S]*?<!\[endif\]>/gi, '')
+  html = html.replace(/<xml[\s\S]*?<\/xml>/gi, '')
+  html = html.replace(/<style[\s\S]*?<\/style>/gi, '')
+  html = html.replace(/<meta[^>]*>/gi, '')
+  html = html.replace(/<link[^>]*>/gi, '')
+
+  // 3. Loại bỏ các namespace tags Office như <o:p>, <w:...>, v.v.
+  html = html.replace(/<\/?o:[^>]*>/gi, '')
+  html = html.replace(/<\/?w:[^>]*>/gi, '')
+  html = html.replace(/<\/?m:[^>]*>/gi, '')
+  html = html.replace(/<\/?v:[^>]*>/gi, '')
+
+  // 4. Xóa các comment HTML còn sót lại nếu không chứa thẻ table
+  html = html.replace(/<!--[\s\S]*?-->/g, '')
+
+  // 5. Nếu không chứa thẻ table, trả về html đã làm sạch cơ bản
+  if (!/<table/i.test(html)) {
+    return html
+  }
+
+  // 6. Chuẩn hóa DOM của Table qua trình phân tích DOMParser
+  try {
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(html, 'text/html')
+    const tables = Array.from(doc.querySelectorAll('table'))
+    if (!tables.length) return html
+
+    tables.forEach((table) => {
+      // Đặt class chuẩn blog-table
+      table.setAttribute('class', 'blog-table')
+      table.removeAttribute('width')
+      table.removeAttribute('cellspacing')
+      table.removeAttribute('cellpadding')
+      table.removeAttribute('border')
+      table.style.width = '100%'
+      table.style.borderCollapse = 'collapse'
+
+      // Xóa border: none hoặc rác trên table
+      if (table.style.border === 'none') {
+        table.style.border = ''
+      }
+
+      // Nếu có bảng bọc ngoài 1x1 chỉ để layout (thường gặp trong Word), unwrap lấy bảng con bên trong
+      const nestedTables = Array.from(table.querySelectorAll('table'))
+      if (nestedTables.length > 0 && table.rows.length === 1 && table.rows[0].cells.length === 1) {
+        table.replaceWith(nestedTables[0])
+        return
+      }
+
+      const rows = Array.from(table.querySelectorAll('tr'))
+      const hasTh = table.querySelector('th') !== null
+
+      rows.forEach((tr, rowIndex) => {
+        // Bỏ qua và xóa các dòng ẩn (display: none) hoặc dòng rác 0-height của Excel/Word
+        if (tr.style.display === 'none' || tr.getAttribute('height') === '0') {
+          tr.remove()
+          return
+        }
+
+        // Bỏ qua các dòng không chứa ô nào
+        const cells = Array.from(tr.children).filter((el) => ['TD', 'TH'].includes(el.tagName))
+        if (cells.length === 0) {
+          tr.remove()
+          return
+        }
+
+        tr.removeAttribute('class')
+        tr.style.cssText = ''
+
+        // Xử lý từng ô trong hàng
+        cells.forEach((cell) => {
+          cell.removeAttribute('class')
+          cell.removeAttribute('valign')
+          cell.removeAttribute('width')
+          cell.removeAttribute('height')
+
+          // Làm sạch style rác mso và windowtext
+          let styleText = cell.getAttribute('style') || ''
+          styleText = styleText
+            .replace(/mso-[^;]+;?/gi, '')
+            .replace(/border[^:]*:\s*[^;]*windowtext[^;]*;?/gi, '')
+            .replace(/border[^:]*:\s*none;?/gi, '')
+            .replace(/color:\s*windowtext;?/gi, '')
+            .trim()
+
+          if (styleText) {
+            cell.setAttribute('style', styleText)
+          } else {
+            cell.removeAttribute('style')
+          }
+
+          // Chuyển hàng đầu tiên thành TH nếu bảng chưa có TH nào
+          let currentCell = cell
+          if (!hasTh && rowIndex === 0 && cell.tagName === 'TD') {
+            const th = doc.createElement('th')
+            Array.from(cell.attributes).forEach((attr) => th.setAttribute(attr.name, attr.value))
+            th.innerHTML = cell.innerHTML
+            tr.replaceChild(th, cell)
+            currentCell = th
+          }
+
+          // Chuyển đổi bất kỳ thẻ div bên trong ô thành thẻ p để tuân thủ schema TipTap
+          currentCell.querySelectorAll('div').forEach((div) => {
+            const p = doc.createElement('p')
+            p.innerHTML = div.innerHTML
+            div.replaceWith(p)
+          })
+
+          // Đảm bảo nội dung trong ô được bọc bởi ít nhất 1 thẻ <p>
+          const childBlocks = Array.from(currentCell.children).filter((el) =>
+            ['P', 'H1', 'H2', 'H3', 'UL', 'OL'].includes(el.tagName)
+          )
+
+          if (childBlocks.length === 0) {
+            const rawContent = currentCell.innerHTML.trim()
+            currentCell.innerHTML = `<p>${rawContent || '<br>'}</p>`
+          } else {
+            currentCell.querySelectorAll('p').forEach((p) => {
+              p.removeAttribute('class')
+              p.style.margin = '0'
+              if (!p.innerHTML.trim()) {
+                p.innerHTML = '<br>'
+              }
+            })
+          }
+        })
+      })
+
+      // Đưa table ra ngoài các thẻ <p>, <div>, <span> bọc ngoài để trở thành top-level block
+      let parent = table.parentElement
+      while (parent && parent !== doc.body && ['P', 'DIV', 'SPAN', 'SECTION'].includes(parent.tagName)) {
+        parent.parentNode?.insertBefore(table, parent)
+        if (!parent.textContent.trim() && parent.children.length === 0) {
+          const toRemove = parent
+          parent = parent.parentNode
+          toRemove.remove()
+        } else {
+          break
+        }
+      }
+    })
+
+    return doc.body.innerHTML
+  } catch (err) {
+    console.warn('[cleanWordTableHtml] Lỗi chuẩn hóa:', err)
+    return html
+  }
+}
+
+// ── Hàm chuyển đổi văn bản phân tách bằng Tab (Excel / Word plain text) thành Table HTML ──
+function tryConvertTsvToTableHtml(text) {
+  if (!text || typeof text !== 'string') return null
+  // Lọc bỏ các dòng trắng rỗng để tránh nhân đôi số hàng (x2 rows)
+  const lines = text.trim().split(/\r?\n/).filter((line) => line.trim().length > 0)
+  if (lines.length < 2) return null
+
+  // Phải có ít nhất 1 dòng chứa dấu tab
+  const hasTabs = lines.some((line) => line.includes('\t'))
+  if (!hasTabs) return null
+
+  const rows = lines.map((line) => line.split('\t'))
+  const maxCols = Math.max(...rows.map((r) => r.length))
+  if (maxCols < 2) return null
+
+  let html = '<table class="blog-table"><tbody>'
+  rows.forEach((row, rowIndex) => {
+    html += '<tr>'
+    row.forEach((cellText) => {
+      const tag = rowIndex === 0 ? 'th' : 'td'
+      const cleanText = cellText.trim()
+      html += `<${tag}><p>${cleanText || '<br>'}</p></${tag}>`
+    })
+    for (let i = row.length; i < maxCols; i++) {
+      const tag = rowIndex === 0 ? 'th' : 'td'
+      html += `<${tag}><p><br></p></${tag}>`
+    }
+    html += '</tr>'
+  })
+  html += '</tbody></table>'
+  return html
+}
+
 // ════════════════════════════════════════════════════════
 export default function RichTextEditor({ value, onChange, placeholder }) {
   const fileInputRef        = useRef(null)
@@ -191,6 +387,7 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
   const highlightBtnRef     = useRef(null)
   const calloutBtnRef       = useRef(null)
   const tableBtnRef         = useRef(null)
+  const editorRef           = useRef(null)
 
   const [uploading, setUploading]           = useState(false)
   const [replacingImg, setReplacingImg]     = useState(false)
@@ -228,10 +425,47 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
       TableHeader,
       TableCell,
     ],
-    content: value || '',
+    content: value ? (value.includes('<table') ? cleanWordTableHtml(value) : value) : '',
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: { class: styles.editorArea },
+      transformPastedHTML(html) {
+        return cleanWordTableHtml(html)
+      },
+      handlePaste(view, event) {
+        const clipboardData = event.clipboardData
+        if (!clipboardData) return false
+
+        const html = clipboardData.getData('text/html')
+        const text = clipboardData.getData('text/plain')
+
+        // 1. Nếu clipboard đã có HTML (chứa thẻ table):
+        // Trả về false để transformPastedHTML làm sạch và ProseMirror tự động chèn vào tài liệu một cách chuẩn xác,
+        // TUYỆT ĐỐI KHÔNG tự gọi insertContent ở đây vì sẽ làm ProseMirror chèn 2 lần (gây ra lỗi x2 số hàng/cột)!
+        if (html && /<table/i.test(html)) {
+          return false
+        }
+
+        // 2. Nếu con trỏ đang nằm bên trong một bảng đã có sẵn -> để ProseMirror xử lý paste tự nhiên vào ô
+        const ed = editorRef.current || editor
+        if (ed?.isActive('table')) {
+          return false
+        }
+
+        // 3. Trường hợp chỉ có Plain Text dạng bảng phân tách bằng phím Tab (TSV - Excel/Word/Sheets)
+        if (text && text.includes('\t')) {
+          const tsvTableHtml = tryConvertTsvToTableHtml(text)
+          if (tsvTableHtml) {
+            event.preventDefault()
+            if (ed) {
+              ed.chain().focus().insertContent(tsvTableHtml).run()
+              return true
+            }
+          }
+        }
+
+        return false
+      },
       handleClick(view, pos, event) {
         // Khi người dùng click vào hình ảnh trong nội dung -> Mở ngay ModalOverlay với thông số hiện tại
         const figureEl = event.target.closest('figure') || event.target.closest('img')
@@ -255,11 +489,14 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
     },
   })
 
+  editorRef.current = editor
+
   useEffect(() => {
     if (!editor) return
     const nextContent = value || ''
-    if (editor.getHTML() !== nextContent) {
-      editor.commands.setContent(nextContent, { emitUpdate: false })
+    if (editor.getHTML() !== nextContent && !editor.isFocused) {
+      const sanitized = nextContent.includes('<table') ? cleanWordTableHtml(nextContent) : nextContent
+      editor.commands.setContent(sanitized, { emitUpdate: false })
     }
   }, [editor, value])
 
@@ -488,7 +725,9 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
                 <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().addColumnAfter().run(); }}>Thêm cột bên phải</button>
                 <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().deleteRow().run(); }}>Xóa dòng</button>
                 <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().deleteColumn().run(); }}>Xóa cột</button>
-                <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().deleteTable().run(); }} style={{ color: '#dc2626' }}>Xóa bảng</button>
+                <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().mergeCells().run(); }}>Gộp các ô đã chọn</button>
+                <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().splitCell().run(); }}>Tách ô đã gộp</button>
+                <button type="button" className={styles.colorMenuItem} onClick={() => { setTableMenuOpen(false); editor.chain().focus().deleteTable().run(); }} style={{ color: '#dc2626' }}>Xóa toàn bộ bảng</button>
               </>
             )}
           </DropdownMenu>
