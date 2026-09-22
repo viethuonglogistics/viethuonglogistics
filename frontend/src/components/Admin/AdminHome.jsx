@@ -2,18 +2,111 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Save, Home, Info, Truck, Users, Phone, LayoutTemplate, Loader2,
-  Camera, Plus, Trash2, Eye, EyeOff, Star, Upload, MessageCircle, ArrowUp, ArrowDown,
+  Camera, Plus, Trash2, Eye, EyeOff, Star, Upload, MessageCircle, ArrowUp, ArrowDown, Sparkles,
 } from 'lucide-react'
 import { homePageApi, partnerApi, resolveApiMediaUrl } from '../../services/api'
+import heroSlide1 from '../../assets/hero-slide-1.png'
 import styles from './AdminSettings.module.scss'
 import { useAdminToast } from './AdminToast'
 import AdminConfirmDialog from './AdminConfirmDialog'
+
+const HERO_DESC_STYLES = [
+  {
+    id: 'badge_glass',
+    label: 'Hộp kính mờ Glassmorphism',
+    tag: 'Khuyên dùng',
+    desc: 'Hộp bo góc mờ sang trọng, viền sáng nhẹ, chống chói toàn diện kể cả nền ảnh nhiều điểm sáng.',
+  },
+  {
+    id: 'shadow_glow',
+    label: 'Đổ bóng viền sâu chống chói',
+    tag: 'Tự nhiên',
+    desc: 'Chữ trắng nét căng với nhiều lớp bóng đen sâu nhiều cấp, không cần khung viền.',
+  },
+  {
+    id: 'tag_accent',
+    label: 'Thẻ tối viền đỏ Logistics',
+    tag: 'Thương hiệu',
+    desc: 'Thẻ nền tối thanh lịch với dải viền đỏ đặc trưng thương hiệu bên trái.',
+  },
+  {
+    id: 'classic',
+    label: 'Chữ mờ thanh lịch cổ điển',
+    tag: 'Tối giản',
+    desc: 'Định dạng chữ mờ truyền thống nguyên bản.',
+  },
+]
+
+function getHeroDescPreviewStyle(styleId) {
+  switch (styleId) {
+    case 'badge_glass':
+      return {
+        padding: '12px 24px',
+        background: 'rgba(10, 18, 38, 0.65)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        borderRadius: 8,
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.45)',
+      }
+    case 'tag_accent':
+      return {
+        padding: '12px 22px 12px 18px',
+        background: 'rgba(11, 19, 38, 0.82)',
+        backdropFilter: 'blur(8px)',
+        WebkitBackdropFilter: 'blur(8px)',
+        borderLeft: '3.5px solid #DC2626',
+        borderTop: '1px solid rgba(255, 255, 255, 0.12)',
+        borderRight: '1px solid rgba(255, 255, 255, 0.12)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+        borderRadius: '0 8px 8px 0',
+        boxShadow: '0 6px 20px rgba(0, 0, 0, 0.5)',
+      }
+    case 'shadow_glow':
+    case 'classic':
+    default:
+      return {
+        padding: '4px 10px',
+      }
+  }
+}
+
+function getHeroDescTextPreviewStyle(styleId) {
+  switch (styleId) {
+    case 'badge_glass':
+      return {
+        color: '#F8FAFC',
+        fontWeight: 500,
+        textShadow: '0 1px 3px rgba(0, 0, 0, 0.85)',
+      }
+    case 'shadow_glow':
+      return {
+        color: '#FFFFFF',
+        fontWeight: 600,
+        textShadow: '0 1px 2px #000000, 0 2px 6px rgba(0, 0, 0, 0.95), 0 4px 16px rgba(0, 0, 0, 0.9), 0 0 20px rgba(0, 0, 0, 0.85)',
+      }
+    case 'tag_accent':
+      return {
+        color: '#F8FAFC',
+        fontWeight: 500,
+        textShadow: '0 1px 2px rgba(0, 0, 0, 0.8)',
+      }
+    case 'classic':
+    default:
+      return {
+        color: 'rgba(255, 255, 255, 0.88)',
+        fontWeight: 400,
+        textShadow: '0 1px 4px rgba(0, 0, 0, 0.75)',
+      }
+  }
+}
 
 const DEFAULT_HOME = {
   hero: {
     title: 'VIET HUONG',
     subtitle: 'LOGISTICS',
     description: 'Kết nối toàn quốc — vươn tầm quốc tế.\nVận chuyển chuyên nghiệp, nhanh chóng và an toàn.',
+    description_style: 'badge_glass',
     primary_cta_label: 'Yêu Cầu Báo Giá',
     primary_cta_link: '/dich-vu#lien-he',
     secondary_cta_label: 'Xem Dịch Vụ',
@@ -666,12 +759,226 @@ export default function AdminHome() {
                     <label className={styles.label}>{field.label}</label>
 
                     {field.type === 'textarea' ? (
-                      <textarea
-                        className={styles.textarea}
-                        rows={field.key === 'offices_text' ? 8 : 4}
-                        value={value || ''}
-                        onChange={e => handleChange(activeDataKey, field.key, e.target.value)}
-                      />
+                      <>
+                        <textarea
+                          className={styles.textarea}
+                          rows={field.key === 'offices_text' ? 8 : 4}
+                          value={value || ''}
+                          onChange={e => handleChange(activeDataKey, field.key, e.target.value)}
+                        />
+
+                        {activeTab === 'hero' && field.key === 'description' && (
+                          <div style={{ marginTop: 18, marginBottom: 16 }}>
+                            {/* Header style options */}
+                            <label className={styles.label} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                              <Sparkles size={15} style={{ color: '#DC2626' }} />
+                              <span style={{ fontWeight: 700, color: '#111827' }}>Phong cách hiển thị Mô tả (Style)</span>
+                              <span style={{ fontSize: 11.5, fontWeight: 400, color: '#6B7280' }}>— Giúp chữ luôn rõ nét, chống chói lóa trước nền ảnh</span>
+                            </label>
+
+                            {/* 4 Style Option Cards */}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 10, marginBottom: 18 }}>
+                              {HERO_DESC_STYLES.map(style => {
+                                const isSelected = (home.hero?.description_style || 'badge_glass') === style.id
+                                return (
+                                  <div
+                                    key={style.id}
+                                    onClick={() => handleChange('hero', 'description_style', style.id)}
+                                    style={{
+                                      padding: '12px 14px',
+                                      borderRadius: 10,
+                                      border: isSelected ? '2px solid #DC2626' : '1px solid #E5E7EB',
+                                      background: isSelected ? '#FEF2F2' : '#FFFFFF',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s ease',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      gap: 6,
+                                      boxShadow: isSelected ? '0 2px 8px rgba(220, 38, 38, 0.12)' : 'none',
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                        <input
+                                          type="radio"
+                                          name="hero_desc_style"
+                                          checked={isSelected}
+                                          onChange={() => handleChange('hero', 'description_style', style.id)}
+                                          style={{ accentColor: '#DC2626', cursor: 'pointer' }}
+                                        />
+                                        <span style={{ fontWeight: 600, fontSize: 13.5, color: isSelected ? '#991B1B' : '#1F2937' }}>
+                                          {style.label}
+                                        </span>
+                                      </div>
+                                      <span
+                                        style={{
+                                          fontSize: 10.5,
+                                          fontWeight: 600,
+                                          padding: '2px 7px',
+                                          borderRadius: 12,
+                                          background: isSelected ? '#DC2626' : '#F3F4F6',
+                                          color: isSelected ? '#FFFFFF' : '#4B5563',
+                                        }}
+                                      >
+                                        {style.tag}
+                                      </span>
+                                    </div>
+                                    <p style={{ margin: 0, fontSize: 12, color: isSelected ? '#7F1D1D' : '#6B7280', lineHeight: 1.45, paddingLeft: 24 }}>
+                                      {style.desc}
+                                    </p>
+                                  </div>
+                                )
+                              })}
+                            </div>
+
+                            {/* Live Preview Container */}
+                            <div
+                              style={{
+                                border: '1px solid #E5E7EB',
+                                borderRadius: 12,
+                                overflow: 'hidden',
+                                background: '#0F172A',
+                                boxShadow: '0 4px 16px rgba(0, 0, 0, 0.08)',
+                              }}
+                            >
+                              {/* Preview Topbar */}
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  padding: '10px 16px',
+                                  background: '#1E293B',
+                                  borderBottom: '1px solid #334155',
+                                  gap: 8,
+                                }}
+                              >
+                                <Eye size={15} style={{ color: '#38BDF8' }} />
+                                <span style={{ fontSize: 12.5, fontWeight: 600, color: '#F8FAFC' }}>
+                                  Xem trước mô phỏng trên nền ảnh Hero (Xe tải)
+                                </span>
+                              </div>
+
+                              {/* Preview Canvas */}
+                              <div
+                                style={{
+                                  position: 'relative',
+                                  padding: '38px 20px',
+                                  backgroundImage: `url(${heroSlide1})`,
+                                  backgroundSize: 'cover',
+                                  backgroundPosition: 'center',
+                                  minHeight: 280,
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                {/* Simulated Hero dark vignette */}
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    inset: 0,
+                                    background: 'radial-gradient(ellipse 75% 65% at 50% 50%, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.65) 100%)',
+                                    pointerEvents: 'none',
+                                  }}
+                                />
+
+                                {/* Title Preview */}
+                                <div style={{ position: 'relative', zIndex: 2, marginBottom: 4 }}>
+                                  <span
+                                    style={{
+                                      fontFamily: "'Syne', sans-serif",
+                                      fontSize: 'clamp(28px, 4vw, 40px)',
+                                      fontWeight: 900,
+                                      color: '#FFFFFF',
+                                      letterSpacing: '0.04em',
+                                      textShadow: '0 2px 8px rgba(0,0,0,0.8), 0 0 15px rgba(220,38,38,0.4)',
+                                    }}
+                                  >
+                                    {home.hero?.title || 'VIET HUONG'}
+                                  </span>
+                                </div>
+
+                                {/* Subtitle Preview */}
+                                <div style={{ position: 'relative', zIndex: 2, marginBottom: 14 }}>
+                                  <span
+                                    style={{
+                                      fontFamily: "'Syne', sans-serif",
+                                      fontSize: 'clamp(12px, 1.8vw, 15px)',
+                                      fontWeight: 900,
+                                      letterSpacing: '0.35em',
+                                      textTransform: 'uppercase',
+                                      color: '#DC2626',
+                                      WebkitTextStroke: '1px #FFFFFF',
+                                    }}
+                                  >
+                                    {home.hero?.subtitle || 'LOGISTICS'}
+                                  </span>
+                                </div>
+
+                                {/* Description Preview with selected style */}
+                                <div
+                                  style={{
+                                    position: 'relative',
+                                    zIndex: 2,
+                                    maxWidth: 520,
+                                    width: '100%',
+                                    transition: 'all 0.25s ease',
+                                    ...getHeroDescPreviewStyle(home.hero?.description_style || 'badge_glass'),
+                                  }}
+                                >
+                                  <p
+                                    style={{
+                                      margin: 0,
+                                      fontSize: 13.5,
+                                      lineHeight: 1.7,
+                                      whiteSpace: 'pre-line',
+                                      ...getHeroDescTextPreviewStyle(home.hero?.description_style || 'badge_glass'),
+                                    }}
+                                  >
+                                    {home.hero?.description || 'Kết nối toàn quốc — vươn tầm quốc tế.\nVận chuyển chuyên nghiệp, nhanh chóng và an toàn.'}
+                                  </p>
+                                </div>
+
+                                {/* CTA buttons preview */}
+                                <div style={{ position: 'relative', zIndex: 2, marginTop: 18, display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+                                  <span
+                                    style={{
+                                      padding: '7px 18px',
+                                      borderRadius: 3,
+                                      background: '#DC2626',
+                                      color: '#FFFFFF',
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                      letterSpacing: '0.05em',
+                                      textTransform: 'uppercase',
+                                    }}
+                                  >
+                                    {home.hero?.primary_cta_label || 'Yêu Cầu Báo Giá'}
+                                  </span>
+                                  <span
+                                    style={{
+                                      padding: '7px 18px',
+                                      borderRadius: 3,
+                                      background: 'rgba(255, 255, 255, 0.1)',
+                                      border: '1px solid rgba(255, 255, 255, 0.3)',
+                                      color: '#FFFFFF',
+                                      fontSize: 11,
+                                      fontWeight: 600,
+                                      letterSpacing: '0.05em',
+                                      textTransform: 'uppercase',
+                                      backdropFilter: 'blur(4px)',
+                                    }}
+                                  >
+                                    {home.hero?.secondary_cta_label || 'Xem Dịch Vụ'}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     ) : field.type === 'image_upload' || field.type === 'video_upload' ? (
                       <div style={{ display: 'grid', gap: 10 }}>
                         {value && (
