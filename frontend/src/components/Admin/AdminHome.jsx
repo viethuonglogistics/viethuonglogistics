@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Save, Home, Info, Truck, Users, Phone, LayoutTemplate, Loader2,
-  Camera, Plus, Trash2, Eye, EyeOff, Star, Upload,
+  Camera, Plus, Trash2, Eye, EyeOff, Star, Upload, MessageCircle, ArrowUp, ArrowDown,
 } from 'lucide-react'
 import { homePageApi, partnerApi, resolveApiMediaUrl } from '../../services/api'
 import styles from './AdminSettings.module.scss'
@@ -95,6 +95,50 @@ const DEFAULT_HOME = {
     zalo_url: 'https://zalo.me',
     offices: [],
   },
+  quick_contact: {
+    enabled: true,
+    position: 'right',
+    pulse_animation: true,
+    title: 'Liên hệ nhanh',
+    items: [
+      {
+        id: 'phone',
+        label: 'Hotline 24/7',
+        sublabel: '0905.386.888',
+        type: 'phone',
+        value: '0905386888',
+        color: '#b91c1c',
+        active: true,
+      },
+      {
+        id: 'zalo',
+        label: 'Chat Zalo',
+        sublabel: 'Tư vấn ngay',
+        type: 'zalo',
+        value: 'https://id.zalo.me/account/login?continue=http%3A%2F%2Fzalo.me%2F0768406888',
+        color: '#0284c7',
+        active: true,
+      },
+      {
+        id: 'messenger',
+        label: 'Facebook Messenger',
+        sublabel: 'Hỗ trợ trực tuyến',
+        type: 'messenger',
+        value: 'https://www.messenger.com/login.php?next=https%3A%2F%2Fwww.messenger.com%2Ft%2F106023084811174%2F%3Fmessaging_source%3Dsource%253Apages%253Amessage_shortlink%26source_id%3D1441792%26recurring_notification%3D0',
+        color: '#2563eb',
+        active: true,
+      },
+      {
+        id: 'map',
+        label: 'Vị trí Google Map',
+        sublabel: 'Chỉ đường đến kho',
+        type: 'map',
+        value: 'https://www.google.com/maps/place/G%E1%BA%A0CH+%E1%BB%90P+L%C3%81T+%C4%90%C3%80+N%E1%BA%B4NG+-+VI%E1%BB%86T+H%C6%AF%C6%A0NG+CERAMICS+-+G%E1%BA%A0CH+%E1%BB%90P+L%C3%81T+NH%E1%BA%ACP+KH%E1%BA%A8U+CAO+C%E1%BA%A4P+%C4%90%C3%80+N%E1%BA%B4NG/@16.0822321,108.1918224,12z/data=!4m5!3m4!1s0x31421995f294dd55:0x9963a5bdc074290!8m2!3d16.0385806!4d108.2101752?shorturl=1',
+        color: '#059669',
+        active: true,
+      },
+    ],
+  },
 }
 
 const SECTIONS = [
@@ -174,6 +218,25 @@ const SECTIONS = [
     ],
   },
   {
+    key: 'quick_contact',
+    label: 'Nút liên hệ nhanh (All-in-one)',
+    icon: MessageCircle,
+    fields: [
+      { key: 'enabled', label: 'Bật hiển thị widget trên website', type: 'checkbox' },
+      {
+        key: 'position',
+        label: 'Vị trí hiển thị trên màn hình',
+        type: 'select',
+        options: [
+          { value: 'right', label: 'Góc phải màn hình (Mặc định)' },
+          { value: 'left', label: 'Góc trái màn hình' },
+        ],
+      },
+      { key: 'pulse_animation', label: 'Bật hiệu ứng rung sóng radar gây chú ý', type: 'checkbox' },
+      { key: 'title', label: 'Tiêu đề nhóm liên hệ', type: 'text' },
+    ],
+  },
+  {
     key: 'footer',
     label: 'Footer',
     icon: LayoutTemplate,
@@ -219,6 +282,13 @@ function normalizeHome(data = {}) {
     partners_section: { ...DEFAULT_HOME.partners_section, ...(data.partners_section || {}) },
     contact_section: { ...DEFAULT_HOME.contact_section, ...(data.contact_section || {}) },
     footer: { ...DEFAULT_HOME.footer, ...(data.footer || {}) },
+    quick_contact: {
+      ...DEFAULT_HOME.quick_contact,
+      ...(data.quick_contact && typeof data.quick_contact === 'object' && !Array.isArray(data.quick_contact) ? data.quick_contact : {}),
+      items: Array.isArray(data.quick_contact?.items)
+        ? data.quick_contact.items
+        : DEFAULT_HOME.quick_contact.items,
+    },
   }
 
   merged.footer.offices_text = officesToText(merged.footer.offices)
@@ -353,6 +423,76 @@ export default function AdminHome() {
     }))
     setDeleteReviewTarget(null)
     showToast('Đã xóa đánh giá. Bấm lưu section để cập nhật lên website.', 'success')
+  }
+
+  const handleAddQuickContactItem = () => {
+    setHome(prev => {
+      const currentItems = Array.isArray(prev.quick_contact?.items) ? [...prev.quick_contact.items] : []
+      const newItem = {
+        id: `channel-${Date.now()}`,
+        label: 'Kênh liên hệ mới',
+        sublabel: 'Bấm để liên hệ',
+        type: 'phone',
+        value: '',
+        color: '#dc2626',
+        active: true,
+      }
+      return {
+        ...prev,
+        quick_contact: {
+          ...prev.quick_contact,
+          items: [...currentItems, newItem],
+        },
+      }
+    })
+    showToast('Đã thêm nút liên hệ mới. Bấm "Xuất bản section" sau khi sửa xong.', 'success')
+  }
+
+  const handleUpdateQuickContactItem = (index, fieldKey, val) => {
+    setHome(prev => {
+      const currentItems = [...(prev.quick_contact?.items || [])]
+      if (!currentItems[index]) return prev
+      currentItems[index] = { ...currentItems[index], [fieldKey]: val }
+      return {
+        ...prev,
+        quick_contact: {
+          ...prev.quick_contact,
+          items: currentItems,
+        },
+      }
+    })
+  }
+
+  const handleDeleteQuickContactItem = (index) => {
+    setHome(prev => {
+      const currentItems = (prev.quick_contact?.items || []).filter((_, i) => i !== index)
+      return {
+        ...prev,
+        quick_contact: {
+          ...prev.quick_contact,
+          items: currentItems,
+        },
+      }
+    })
+    showToast('Đã xóa nút liên hệ. Bấm "Xuất bản section" để lưu thay đổi.', 'success')
+  }
+
+  const handleMoveQuickContactItem = (index, direction) => {
+    setHome(prev => {
+      const currentItems = [...(prev.quick_contact?.items || [])]
+      const targetIndex = index + direction
+      if (targetIndex < 0 || targetIndex >= currentItems.length) return prev
+      const temp = currentItems[index]
+      currentItems[index] = currentItems[targetIndex]
+      currentItems[targetIndex] = temp
+      return {
+        ...prev,
+        quick_contact: {
+          ...prev.quick_contact,
+          items: currentItems,
+        },
+      }
+    })
   }
 
   const getSectionPayload = (sectionKey) => {
@@ -583,6 +723,16 @@ export default function AdminHome() {
                           onChange={e => handleChange(activeDataKey, field.key, e.target.value)}
                         />
                       </div>
+                    ) : field.type === 'select' ? (
+                      <select
+                        className={styles.input}
+                        value={value || field.options?.[0]?.value || ''}
+                        onChange={e => handleChange(activeDataKey, field.key, e.target.value)}
+                      >
+                        {field.options?.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
                     ) : field.type === 'checkbox' ? (
                       <label style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#4B5563', fontSize: 14 }}>
                         <input
@@ -853,6 +1003,187 @@ export default function AdminHome() {
                             value={review.quote || ''}
                             onChange={e => handleReviewChange(index, 'quote', e.target.value)}
                             placeholder="Nhập nội dung đánh giá..."
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'quick_contact' && (
+                <div className={styles.sectionAddon}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 16 }}>
+                    <div>
+                      <h3 style={{ margin: '0 0 4px', fontSize: 16, color: '#111827', fontWeight: 700 }}>
+                        Danh sách các nút liên hệ nổi ({home.quick_contact?.items?.length || 0})
+                      </h3>
+                      <p style={{ margin: 0, color: '#6B7280', fontSize: 13 }}>
+                        Bạn có thể chỉnh sửa số điện thoại, đường dẫn Zalo, Messenger, Google Maps, bật/tắt hoặc đổi thứ tự.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.saveBtn}
+                      onClick={handleAddQuickContactItem}
+                      style={{ width: 'fit-content', whiteSpace: 'nowrap' }}
+                    >
+                      <Plus size={14} /> Thêm nút liên hệ
+                    </button>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: 14 }}>
+                    {(home.quick_contact?.items || []).map((item, idx) => (
+                      <div
+                        key={item.id || idx}
+                        style={{
+                          border: '1px solid #E5E7EB',
+                          borderRadius: 14,
+                          background: item.active !== false ? '#FFFFFF' : '#F9FAFB',
+                          padding: 16,
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                          display: 'grid',
+                          gap: 12,
+                        }}
+                      >
+                        {/* Header hàng */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #F3F4F6', paddingBottom: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <span
+                              style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: '50%',
+                                background: item.color || '#e11d48',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#fff',
+                                fontSize: 12,
+                                fontWeight: 700,
+                              }}
+                            >
+                              {idx + 1}
+                            </span>
+                            <strong style={{ fontSize: 15, color: '#111827' }}>{item.label || `Nút #${idx + 1}`}</strong>
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                padding: '2px 8px',
+                                borderRadius: 12,
+                                background: item.active !== false ? '#DCFCE7' : '#F3F4F6',
+                                color: item.active !== false ? '#15803D' : '#6B7280',
+                              }}
+                            >
+                              {item.active !== false ? 'Đang hiện' : 'Đang ẩn'}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <button
+                              type="button"
+                              className={styles.changeImgBtn}
+                              title="Di chuyển lên"
+                              disabled={idx === 0}
+                              onClick={() => handleMoveQuickContactItem(idx, -1)}
+                              style={{ opacity: idx === 0 ? 0.35 : 1, padding: '4px 8px' }}
+                            >
+                              <ArrowUp size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.changeImgBtn}
+                              title="Di chuyển xuống"
+                              disabled={idx === (home.quick_contact?.items?.length || 1) - 1}
+                              onClick={() => handleMoveQuickContactItem(idx, 1)}
+                              style={{ opacity: idx === (home.quick_contact?.items?.length || 1) - 1 ? 0.35 : 1, padding: '4px 8px' }}
+                            >
+                              <ArrowDown size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.changeImgBtn}
+                              onClick={() => handleUpdateQuickContactItem(idx, 'active', !item.active)}
+                              style={{ padding: '4px 8px' }}
+                            >
+                              {item.active !== false ? <EyeOff size={13} /> : <Eye size={13} />}
+                              {item.active !== false ? 'Ẩn' : 'Hiện'}
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.changeImgBtn}
+                              onClick={() => handleDeleteQuickContactItem(idx)}
+                              style={{ padding: '4px 8px', color: '#DC2626' }}
+                            >
+                              <Trash2 size={13} /> Xóa
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Form fields */}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+                          <div>
+                            <label className={styles.label}>Tiêu đề chính (Label)</label>
+                            <input
+                              className={styles.input}
+                              value={item.label || ''}
+                              onChange={e => handleUpdateQuickContactItem(idx, 'label', e.target.value)}
+                              placeholder="VD: Chat Zalo, Hotline"
+                            />
+                          </div>
+                          <div>
+                            <label className={styles.label}>Phụ đề ngắn (Sublabel)</label>
+                            <input
+                              className={styles.input}
+                              value={item.sublabel || ''}
+                              onChange={e => handleUpdateQuickContactItem(idx, 'sublabel', e.target.value)}
+                              placeholder="VD: 0905.386.888, Tư vấn ngay"
+                            />
+                          </div>
+                          <div>
+                            <label className={styles.label}>Loại kênh</label>
+                            <select
+                              className={styles.input}
+                              value={item.type || 'phone'}
+                              onChange={e => handleUpdateQuickContactItem(idx, 'type', e.target.value)}
+                            >
+                              <option value="phone">Hotline / Điện thoại (tel:)</option>
+                              <option value="zalo">Zalo</option>
+                              <option value="messenger">Facebook Messenger</option>
+                              <option value="map">Vị trí Google Map</option>
+                              <option value="email">Email</option>
+                              <option value="custom">Tùy chỉnh khác</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className={styles.label}>Màu sắc đại diện</label>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <input
+                                type="color"
+                                value={item.color || '#dc2626'}
+                                onChange={e => handleUpdateQuickContactItem(idx, 'color', e.target.value)}
+                                style={{ width: 40, height: 38, padding: 2, border: '1px solid #E5E7EB', borderRadius: 8, cursor: 'pointer' }}
+                              />
+                              <input
+                                className={styles.input}
+                                value={item.color || ''}
+                                onChange={e => handleUpdateQuickContactItem(idx, 'color', e.target.value)}
+                                placeholder="#dc2626"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className={styles.label}>
+                            {item.type === 'phone' ? 'Số điện thoại gọi (VD: 0905386888)' : 'Đường dẫn liên kết (URL đầy đủ)'}
+                          </label>
+                          <input
+                            className={styles.input}
+                            value={item.value || ''}
+                            onChange={e => handleUpdateQuickContactItem(idx, 'value', e.target.value)}
+                            placeholder={item.type === 'phone' ? '0905386888' : 'https://...'}
                           />
                         </div>
                       </div>

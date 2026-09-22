@@ -21,6 +21,7 @@ import Services from './components/Services/Services'
 import Partners from './components/Partners/Partners'
 import Blog from './components/Blog/Blog'
 import Footer from './components/Footer/FooterCms'
+import QuickContact from './components/QuickContact/QuickContact'
 import AboutDetailPage from './components/About/Aboutdetailpage'
 import ServicesDetailPage from './components/Services/ServicesDetailPage'
 import ServiceDetailPage from './components/Services/ServiceDetailPage'
@@ -105,10 +106,10 @@ function HomePage() {
           <Hero />
         </div>
         <div>
-          <About />
           <Services />
           <Partners />
           <Blog />
+          <About />
           <ContactSection />
         </div>
       </div>
@@ -141,6 +142,7 @@ function PublicLayout() {
 
      <Route path="/giai-dap" element={<FaqWrapper />} />
       </Routes>
+      <QuickContact />
       <Footer />
     </>
   )

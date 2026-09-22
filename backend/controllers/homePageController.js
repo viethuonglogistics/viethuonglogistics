@@ -1,6 +1,7 @@
 const { pool } = require('../config/database');
 const { sanitizeLegacyLocalized } = require('../utils/cmsSanitizer');
 const { ensurePublishedBaseline, recordCurrentPublished } = require('../services/cmsRevisionService');
+const { recordAdminAudit } = require('../services/adminAuditService');
 
 const JSON_FIELDS = [
   'hero',
@@ -9,6 +10,7 @@ const JSON_FIELDS = [
   'partners_section',
   'contact_section',
   'footer',
+  'quick_contact',
 ];
 
 const DEFAULT_HOME_PAGE = {
@@ -103,6 +105,50 @@ const DEFAULT_HOME_PAGE = {
       { city: 'HẢI PHÒNG', addr: '298 Phạm Văn Đồng, Phường Hưng Đạo, TP. Hải Phòng' },
     ],
   },
+  quick_contact: {
+    enabled: true,
+    position: 'right',
+    pulse_animation: true,
+    title: 'Liên hệ nhanh',
+    items: [
+      {
+        id: 'phone',
+        label: 'Hotline 24/7',
+        sublabel: '0905.386.888',
+        type: 'phone',
+        value: '0905386888',
+        color: '#b91c1c',
+        active: true,
+      },
+      {
+        id: 'zalo',
+        label: 'Chat Zalo',
+        sublabel: 'Tư vấn ngay',
+        type: 'zalo',
+        value: 'https://id.zalo.me/account/login?continue=http%3A%2F%2Fzalo.me%2F0768406888',
+        color: '#0284c7',
+        active: true,
+      },
+      {
+        id: 'messenger',
+        label: 'Facebook Messenger',
+        sublabel: 'Hỗ trợ trực tuyến',
+        type: 'messenger',
+        value: 'https://www.messenger.com/login.php?next=https%3A%2F%2Fwww.messenger.com%2Ft%2F106023084811174%2F%3Fmessaging_source%3Dsource%253Apages%253Amessage_shortlink%26source_id%3D1441792%26recurring_notification%3D0',
+        color: '#2563eb',
+        active: true,
+      },
+      {
+        id: 'map',
+        label: 'Vị trí Google Map',
+        sublabel: 'Chỉ đường đến kho',
+        type: 'map',
+        value: 'https://www.google.com/maps/place/G%E1%BA%A0CH+%E1%BB%90P+L%C3%81T+%C4%90%C3%80+N%E1%BA%B4NG+-+VI%E1%BB%86T+H%C6%AF%C6%A0NG+CERAMICS+-+G%E1%BA%A0CH+%E1%BB%90P+L%C3%81T+NH%E1%BA%ACP+KH%E1%BA%A8U+CAO+C%E1%BA%A4P+%C4%90%C3%80+N%E1%BA%B4NG/@16.0822321,108.1918224,12z/data=!4m5!3m4!1s0x31421995f294dd55:0x9963a5bdc074290!8m2!3d16.0385806!4d108.2101752?shorturl=1',
+        color: '#059669',
+        active: true,
+      },
+    ],
+  },
 };
 
 function parseJson(value, fallback) {
@@ -141,6 +187,13 @@ function normalizeHomePage(row = {}) {
         ? data.footer.offices
         : DEFAULT_HOME_PAGE.footer.offices,
     },
+    quick_contact: {
+      ...DEFAULT_HOME_PAGE.quick_contact,
+      ...(data.quick_contact && typeof data.quick_contact === 'object' && !Array.isArray(data.quick_contact) ? data.quick_contact : {}),
+      items: Array.isArray(data.quick_contact?.items)
+        ? data.quick_contact.items
+        : DEFAULT_HOME_PAGE.quick_contact.items,
+    },
     updated_at: row.updated_at || null,
   });
 }
@@ -149,9 +202,10 @@ async function ensureHomePageRow() {
   let [rows] = await pool.query('SELECT * FROM home_page ORDER BY id DESC LIMIT 1');
   if (rows.length) return rows[0];
 
+  const columns = JSON_FIELDS.join(', ');
+  const placeholders = JSON_FIELDS.map(() => '?').join(', ');
   await pool.query(
-    `INSERT INTO home_page (hero, about_intro, services_section, partners_section, contact_section, footer)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO home_page (${columns}) VALUES (${placeholders})`,
     JSON_FIELDS.map((field) => JSON.stringify(DEFAULT_HOME_PAGE[field]))
   );
 
@@ -187,6 +241,7 @@ const updateHomePage = async (req, res) => {
     }
 
     const row = await ensureHomePageRow();
+    const beforeState = normalizeHomePage(row);
     await ensurePublishedBaseline('home', req.user?.id);
     const updates = [];
     const values = [];
@@ -203,10 +258,29 @@ const updateHomePage = async (req, res) => {
     await recordCurrentPublished('home', req.user?.id, 'Xuất bản thay đổi trang chủ');
 
     const [rows] = await pool.query('SELECT * FROM home_page WHERE id = ?', [row.id]);
+    const afterState = normalizeHomePage(rows[0]);
+
+    // Ghi nhật ký quản trị (Audit log)
+    const updatedSections = entries.map(([k]) => k);
+    const auditSummary = updatedSections.includes('quick_contact')
+      ? 'Cập nhật nút liên hệ nhanh (All-in-one)'
+      : `Cập nhật cấu hình trang chủ (${updatedSections.join(', ')})`;
+
+    await recordAdminAudit({
+      module: 'home',
+      action: 'update',
+      entityType: 'home_page',
+      entityId: String(row.id),
+      summary: auditSummary,
+      before: beforeState,
+      after: afterState,
+      userId: req.user?.id || null,
+    });
+
     res.json({
       success: true,
       message: 'Cập nhật trang chủ thành công!',
-      data: normalizeHomePage(rows[0]),
+      data: afterState,
     });
   } catch (err) {
     console.error('updateHomePage error:', err);

@@ -551,6 +551,7 @@ export const ContactSection = ({ contactData }) => {
 
   return (
     <section ref={sectionRef} className={s.contactSection} id="lien-he">
+      <span id="lienhe" style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} aria-hidden="true" />
       <div className={s.contactInner}>
 
         {/* Header */}

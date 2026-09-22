@@ -211,6 +211,7 @@ VietHuongLogistics/
 │   │   │   ├── FAG/                      # Trang câu hỏi thường gặp & form thắc mắc
 │   │   │   ├── WhyUs/                    # Khối lý do chọn Việt Hương Logistics
 │   │   │   ├── Partners/                 # Khối đối tác đồng hành
+│   │   │   ├── QuickContact/             # Widget nút liên hệ nổi All-in-one (Hotline, Zalo, Messenger, Map)
 │   │   │   ├── Seo/                      # Thẻ Meta SEO tự động thay đổi theo từng trang
 │   │   │   └── Admin/                    # HỆ THỐNG GIAO DIỆN QUẢN TRỊ NỘI DUNG (CMS)
 │   │   │       ├── AdminLayout.jsx       # Khung giao diện Admin chuẩn (Sidebar + Header + Content)
@@ -283,8 +284,9 @@ Các bảng chính trong CSDL MySQL (`defaultdb` / `vantaiviethuong`):
 8. **`contact_reminders`**: Lịch hẹn nhắc việc CRM (`id`, `contact_id`, `user_id`, `title`, `remind_at`, `priority`, `reminder_type`, `email_reminder_enabled`, `is_completed`, `notes`).
 9. **`faq_items` & `faq_categories` & `faq_inquiries`**: Hệ thống hỏi đáp và câu hỏi khách gửi đến.
 10. **`website_settings`**: Cài đặt thông tin toàn diện (Hotline, email, logo, mạng xã hội, copyright).
-11. **`cms_revisions`**: Bản chụp lịch sử (Snapshot) nội dung CMS trước mỗi lần sửa đổi, cho phép Superadmin xem lại sự thay đổi và khôi phục khi cần.
-12. **`admin_audit_logs`**: Ghi vết các hành động quan trọng (Tạo nhân viên, đổi pass, khóa tài khoản, đăng nhập).
+11. **`home_page`**: Cấu hình nội dung Trang chủ CMS (Hero, Dịch vụ nổi bật, Giới thiệu, Thống kê, và Nút liên hệ nhanh `quick_contact` JSON gồm Hotline, Zalo, Messenger, Map).
+12. **`cms_revisions`**: Bản chụp lịch sử (Snapshot) nội dung CMS trước mỗi lần sửa đổi, cho phép Superadmin xem lại sự thay đổi và khôi phục khi cần.
+13. **`admin_audit_logs`**: Ghi vết các hành động quan trọng (Tạo nhân viên, đổi pass, khóa tài khoản, đăng nhập).
 
 ---
 
