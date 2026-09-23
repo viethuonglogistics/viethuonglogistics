@@ -24,7 +24,6 @@ const DEFAULT_HERO_CONTENT = {
   title: 'VIET HUONG',
   subtitle: 'LOGISTICS',
   description: 'Kết nối toàn quốc — vươn tầm quốc tế.\nVận chuyển chuyên nghiệp, nhanh chóng và an toàn.',
-  description_style: 'badge_glass',
   primary_cta_label: 'Yêu Cầu Báo Giá',
   primary_cta_link: '/dich-vu#lien-he',
   secondary_cta_label: 'Xem Dịch Vụ',
@@ -417,16 +416,10 @@ useEffect(() => {
           {heroContent.subtitle || DEFAULT_HERO_CONTENT.subtitle}
           <span className={styles.logLine} />
         </div>
-        <div className={`${styles.descContainer} ${styles[`descStyle_${heroContent.description_style || 'badge_glass'}`] || styles.descStyle_badge_glass}`}>
-          <p className={styles.desc}>
-            {heroDescriptionLines.map((line, idx) => (
-              <span key={idx}>
-                {line}
-                {idx < heroDescriptionLines.length - 1 && <br />}
-              </span>
-            ))}
-          </p>
-        </div>
+        <p className={styles.desc}>
+          Kết nối toàn quốc — vươn tầm quốc tế.<br />
+          Vận chuyển chuyên nghiệp, nhanh chóng và an toàn.
+        </p>
         <div className={styles.ctas}>
           <Link to="/dich-vu#lien-he" className={styles.btnRed} ref={(node) => { setupMagnetic(node) }}>
             Yêu Cầu Báo Giá

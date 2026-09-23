@@ -18,7 +18,6 @@ const DEFAULT_HOME_PAGE = {
     title: 'VIET HUONG',
     subtitle: 'LOGISTICS',
     description: 'Kết nối toàn quốc — vươn tầm quốc tế.\nVận chuyển chuyên nghiệp, nhanh chóng và an toàn.',
-    description_style: 'badge_glass',
     primary_cta_label: 'Yêu Cầu Báo Giá',
     primary_cta_link: '/dich-vu#lien-he',
     secondary_cta_label: 'Xem Dịch Vụ',
