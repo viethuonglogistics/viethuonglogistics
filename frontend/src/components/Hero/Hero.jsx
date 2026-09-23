@@ -417,18 +417,22 @@ useEffect(() => {
           <span className={styles.logLine} />
         </div>
         <p className={styles.desc}>
-          Kết nối toàn quốc — vươn tầm quốc tế.<br />
-          Vận chuyển chuyên nghiệp, nhanh chóng và an toàn.
+          {heroDescriptionLines.map((line, idx) => (
+            <span key={idx}>
+              {line}
+              {idx < heroDescriptionLines.length - 1 && <br />}
+            </span>
+          ))}
         </p>
         <div className={styles.ctas}>
-          <Link to="/dich-vu#lien-he" className={styles.btnRed} ref={(node) => { setupMagnetic(node) }}>
-            Yêu Cầu Báo Giá
+          <Link to={heroContent.primary_cta_link || "/dich-vu#lien-he"} className={styles.btnRed} ref={(node) => { setupMagnetic(node) }}>
+            {heroContent.primary_cta_label || 'Yêu Cầu Báo Giá'}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </Link>
-          <Link to="/dich-vu" className={styles.btnGhost} ref={(node) => { setupMagnetic(node) }}>
-            Xem Dịch Vụ
+          <Link to={heroContent.secondary_cta_link || "/dich-vu"} className={styles.btnGhost} ref={(node) => { setupMagnetic(node) }}>
+            {heroContent.secondary_cta_label || 'Xem Dịch Vụ'}
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M9 18l6-6-6-6" />
             </svg>
