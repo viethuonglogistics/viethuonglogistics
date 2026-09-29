@@ -138,49 +138,6 @@ export default function Services() {
     return () => { cancelled = true }
   }, [])
 
-  // ── Spotlight / magnetic effect ──────────────────────────────────────
-  const handleMouseMove = useCallback((e, card) => {
-    const rect = card.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const y = e.clientY - rect.top
-    const cx = rect.width / 2
-    const cy = rect.height / 2
-
-    // Spotlight
-    card.style.setProperty('--sx', `${x}px`)
-    card.style.setProperty('--sy', `${y}px`)
-
-    // Subtle 3-D tilt (magnetic)
-    const rotX = ((y - cy) / cy) * -6
-    const rotY = ((x - cx) / cx) * 6
-    gsap.to(card, {
-      rotateX: rotX,
-      rotateY: rotY,
-      duration: 0.4,
-      ease: 'power2.out',
-      transformPerspective: 900,
-      transformOrigin: 'center center',
-    })
-
-    // Parallax image inside card
-    const img = card.querySelector(`.${styles.cardBg}`)
-    if (img) {
-      const px = ((x - cx) / cx) * 12
-      const py = ((y - cy) / cy) * 12
-      gsap.to(img, { x: px, y: py, duration: 0.6, ease: 'power2.out' })
-    }
-  }, [])
-
-  const handleMouseLeave = useCallback((card) => {
-    gsap.to(card, {
-      rotateX: 0,
-      rotateY: 0,
-      duration: 0.6,
-      ease: 'elastic.out(1, 0.5)',
-    })
-    const img = card.querySelector(`.${styles.cardBg}`)
-    if (img) gsap.to(img, { x: 0, y: 0, duration: 0.6, ease: 'power2.out' })
-  }, [])
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -216,129 +173,96 @@ export default function Services() {
         }
       )
 
-      // Bento cards stagger reveal
-      cardsRef.current.forEach((card, i) => {
-        if (!card) return
+      // Cards stagger reveal
+      const cards = cardsRef.current.filter(Boolean)
+      if (cards.length) {
         gsap.fromTo(
-          card,
-          { y: 80, opacity: 0, scale: 0.94 },
+          cards,
+          { y: 50, opacity: 0 },
           {
-            y: 0, opacity: 1, scale: 1, duration: 0.85,
-            ease: 'power4.out',
-            delay: i * 0.1,
-            scrollTrigger: { trigger: sectionRef.current, start: 'top 70%', once: true },
+            y: 0,
+            opacity: 1,
+            duration: 0.75,
+            stagger: 0.12,
+            ease: 'power3.out',
+            scrollTrigger: { trigger: sectionRef.current, start: 'top 75%', once: true },
           }
         )
-      })
-
-      // Scroll-driven parallax on section bg
-      const sectionParallax = sectionRef.current?.querySelector(`.${styles.sectionParallax}`)
-      if (sectionParallax) {
-        gsap.to(sectionParallax, {
-          yPercent: -15,
-          ease: 'none',
-          scrollTrigger: {
-            trigger: sectionRef.current,
-            start: 'top bottom',
-            end: 'bottom top',
-            scrub: true,
-          },
-        })
       }
     }, sectionRef)
 
-    // Attach magnetic listeners
-    const cards = cardsRef.current.filter(Boolean)
-    const moveHandlers = cards.map((card) => {
-      const onMove = (e) => handleMouseMove(e, card)
-      const onLeave = () => handleMouseLeave(card)
-      card.addEventListener('mousemove', onMove)
-      card.addEventListener('mouseleave', onLeave)
-      return { card, onMove, onLeave }
-    })
-
     return () => {
       ctx.revert()
-      moveHandlers.forEach(({ card, onMove, onLeave }) => {
-        card.removeEventListener('mousemove', onMove)
-        card.removeEventListener('mouseleave', onLeave)
-      })
     }
-  }, [displayedServices, handleMouseMove, handleMouseLeave])
+  }, [displayedServices])
 
   if (!section.enabled) return null
 
   return (
     <section id="services" ref={sectionRef} className={styles.services}>
-      {/* Section-level parallax atmosphere */}
-      <div className={styles.sectionParallax} aria-hidden="true" />
-      <div className={styles.orbTeal} aria-hidden="true" />
-      <div className={styles.orbBlue} aria-hidden="true" />
-
-   
-        {/* ── Header ── */}
+      <div className={styles.container}>
+        {/* ── Tiêu đề căn giữa chuẩn như ảnh mẫu ── */}
         <div className={styles.header}>
-          <div className={styles.headerLeft}>
-          
-<h2 className={styles.headerTitle}>
-  Giải Pháp Vận Tải
-  <em className={styles.accent}>Toàn Diện</em>
-</h2>
-          </div>
-          <div className={styles.headerRight}>
-        
-            <Link to={section.cta_link || DEFAULT_SECTION.cta_link} className={styles.headerCta}>
-              Tư Vấn Miễn Phí
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M5 12h14M12 5l7 7-7 7" />
-              </svg>
-            </Link>
-          </div>
+          <h2 className={styles.headerTitle}>
+            {section.title || 'Giải Pháp Vận Tải'}
+            {section.accent && <span className={styles.accent}> {section.accent}</span>}
+          </h2>
         </div>
-      
 
-      {/* ── Bento Grid — full bleed ── */}
-      <div className={styles.bentoWrap}>
-        <div className={styles.bento}>
+        {/* ── Lưới các ô vuông/thẻ dịch vụ chuẩn đều đặn theo chủ đề Đỏ - Đen - Trắng ── */}
+        <div className={styles.cardsGrid}>
           {displayedServices.map((s, i) => (
             <article
               key={s.id}
               ref={(el) => (cardsRef.current[i] = el)}
-              className={`${styles.card} ${styles[`card--${s.size}`]}`}
+              className={styles.card}
               itemScope
               itemType="https://schema.org/Service"
             >
-               <div className={styles.cardRibbon} data-label={s.label} />
-              <div
-                className={styles.cardBg}
-                style={{ backgroundImage: `url(${s.image})` }}
-              />
-              <div className={styles.cardOverlay} />
-              <div className={styles.spotlight} aria-hidden="true" />
+              {/* Hình ảnh phía trên có badge số thứ tự và hiệu ứng chuyển động */}
+              <div className={styles.imageWrap}>
+                <img
+                  src={s.image}
+                  alt={s.title}
+                  className={styles.cardImg}
+                  loading="lazy"
+                />
+                <div className={styles.imageShine} aria-hidden="true" />
+                <span className={styles.cardBadge}>{s.label || `0${i + 1}`}</span>
+              </div>
 
-              <div className={styles.cardContent}>
-                <div className={styles.cardTop}>
-                  <span className={styles.cardLabel}>{s.label}</span>
-                 
-                </div>
+              {/* Nội dung bên dưới với tiêu đề to rõ, mô tả và chữ mô tả nhỏ nhỏ (features) */}
+              <div className={styles.cardBody}>
+                <h3 className={styles.cardTitle} itemProp="name">
+                  {s.title}
+                </h3>
 
-                <div className={styles.cardBody}>
-                  <h3 className={styles.cardTitle} itemProp="name">{s.title}</h3>
-                  <p className={styles.cardDesc} itemProp="description">{s.desc}</p>
+                <p className={styles.cardDesc} itemProp="description">
+                  {s.desc}
+                </p>
 
+                {/* Danh sách chữ mô tả nhỏ nhỏ (Features) — điểm nhấn khi di chuột vào */}
+                {Array.isArray(s.features) && s.features.length > 0 && (
                   <ul className={styles.cardFeatures}>
                     {s.features.map((f, fi) => (
                       <li key={fi}>
-                        <span className={styles.check} />
-                        {f}
+                        <span className={styles.checkIcon}>
+                          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M2.5 6.2L4.8 8.5L9.5 3.5" />
+                          </svg>
+                        </span>
+                        <span className={styles.featureText}>{f}</span>
                       </li>
                     ))}
                   </ul>
+                )}
 
-                  <Link to={s.link || '/dich-vu'} className={styles.cardLink}>
-                    Báo Giá Ngay
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M5 12h14M12 5l7 7-7 7" />
+                {/* Nút Xem thêm hình viên thuốc căn giữa mang phong cách Đỏ - Đen - Trắng */}
+                <div className={styles.cardAction}>
+                  <Link to={s.link || '/dich-vu'} className={styles.btnMore}>
+                    <span>Xem thêm</span>
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={styles.btnArrow}>
+                      <path d="M4 10h12M11 5l5 5-5 5" />
                     </svg>
                   </Link>
                 </div>
