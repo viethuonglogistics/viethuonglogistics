@@ -260,6 +260,20 @@
     border-radius: 3px;
   }
 
+  :global(a),
+  :global(.blog-content-link) {
+    color: $red;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    font-weight: 500;
+    transition: color 0.15s ease, opacity 0.15s ease;
+
+    &:hover {
+      color: darken($red, 12%);
+      opacity: 0.9;
+    }
+  }
+
   // Căn lề (TipTap TextAlign xuất ra style="text-align: ...")
   :global([style*="text-align: center"]) { text-align: center; }
   :global([style*="text-align: right"])  { text-align: right; }

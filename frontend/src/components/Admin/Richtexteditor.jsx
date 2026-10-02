@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Image from '@tiptap/extension-image'
+import Link from '@tiptap/extension-link'
 import TextAlign from '@tiptap/extension-text-align'
 import Highlight from '@tiptap/extension-highlight'
 import { TextStyle } from '@tiptap/extension-text-style'
@@ -17,6 +18,7 @@ import {
   AlignLeft, AlignCenter, AlignRight, AlignJustify, Highlighter, ChevronDown,
   Table as TableIcon, Settings, X, Trash2, AlignLeft as AlignLeftIcon,
   AlignCenter as AlignCenterIcon, AlignRight as AlignRightIcon, Check, RefreshCw,
+  Link as LinkIcon, Unlink as UnlinkIcon, ExternalLink,
 } from 'lucide-react'
 import { blogApi } from '../../services/api'
 import styles from './RichtextEditor.module.scss'
@@ -182,6 +184,29 @@ const HIGHLIGHT_COLORS = [
   { label: 'Hồng', value: '#fcd2e0' },
   { label: 'Cam', value: '#ffd9a8' },
 ]
+
+// ── LinkShortcut Extension (Mod-k / Ctrl+K / Cmd+K) ──────
+const LinkShortcut = Extension.create({
+  name: 'linkShortcut',
+  addKeyboardShortcuts() {
+    return {
+      'Mod-k': () => {
+        return this.editor.commands.openLinkDialog()
+      },
+    }
+  },
+  addCommands() {
+    return {
+      openLinkDialog: () => () => {
+        if (typeof window !== 'undefined' && window.__vhOpenLinkModal) {
+          window.__vhOpenLinkModal()
+          return true
+        }
+        return false
+      },
+    }
+  },
+})
 
 // ── Hàm chuẩn hóa và làm sạch HTML khi Copy/Paste từ Word / Excel / Web ──
 function cleanWordTableHtml(rawHtml) {
@@ -406,10 +431,32 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
   const [modalImgWidth, setModalImgWidth]           = useState('100') // '100' | '75' | '50'
   const [editingPos, setEditingPos]                 = useState(null)
 
+  // ── Modal State cho Chèn / Sửa Link (Ctrl+K) ──
+  const [linkModalOpen, setLinkModalOpen]                 = useState(false)
+  const [linkText, setLinkText]                           = useState('')
+  const [linkUrl, setLinkUrl]                             = useState('')
+  const [linkTargetBlank, setLinkTargetBlank]             = useState(true)
+  const [isEditingExistingLink, setIsEditingExistingLink] = useState(false)
+  const linkSelectionRef                                  = useRef(null)
+  const linkTextInputRef                                  = useRef(null)
+  const linkUrlInputRef                                   = useRef(null)
+
   const editor = useEditor({
     extensions: [
       StarterKit.configure({ heading: { levels: [2] } }),
       Image.configure({ HTMLAttributes: { class: 'blog-content-image' } }),
+      Link.configure({
+        openOnClick: false,
+        autolink: true,
+        linkOnPaste: true,
+        HTMLAttributes: {
+          class: 'blog-content-link',
+        },
+        isAllowedUri: (url, { defaultValidate }) => {
+          return url.startsWith('/') || url.startsWith('#') || defaultValidate(url)
+        },
+      }),
+      LinkShortcut,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       TextStyle, FontSize,
       Highlight.configure({ multicolor: true }),
@@ -431,6 +478,14 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
       attributes: { class: styles.editorArea },
       transformPastedHTML(html) {
         return cleanWordTableHtml(html)
+      },
+      handleKeyDown(view, event) {
+        if ((event.ctrlKey || event.metaKey) && (event.key === 'k' || event.key === 'K')) {
+          event.preventDefault()
+          handleOpenLinkModal()
+          return true
+        }
+        return false
       },
       handlePaste(view, event) {
         const clipboardData = event.clipboardData
@@ -467,6 +522,16 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
         return false
       },
       handleClick(view, pos, event) {
+        // Ctrl+Click / Cmd+Click để mở link thử nghiệm trong tab mới
+        const linkEl = event.target.closest('a')
+        if (linkEl && (event.ctrlKey || event.metaKey)) {
+          const href = linkEl.getAttribute('href')
+          if (href) {
+            window.open(href, '_blank', 'noopener,noreferrer')
+            return true
+          }
+        }
+
         // Khi người dùng click vào hình ảnh trong nội dung -> Mở ngay ModalOverlay với thông số hiện tại
         const figureEl = event.target.closest('figure') || event.target.closest('img')
         if (figureEl) {
@@ -490,6 +555,168 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
   })
 
   editorRef.current = editor
+
+  // ── Mở Modal Chèn / Chỉnh sửa Link ──
+  const handleOpenLinkModal = () => {
+    if (!editor) return
+
+    let { from, to } = editor.state.selection
+    const isLinkActive = editor.isActive('link')
+    let selectedText = editor.state.doc.textBetween(from, to, ' ')
+
+    // Nếu con trỏ chuột chỉ đứng yên tại link (không bôi đen) mà đang nằm trong link:
+    // Tự động mở rộng vùng chọn ra toàn bộ link đó
+    if (from === to && isLinkActive) {
+      editor.commands.extendMarkRange('link')
+      from = editor.state.selection.from
+      to = editor.state.selection.to
+      selectedText = editor.state.doc.textBetween(from, to, ' ')
+    }
+
+    const currentAttrs = isLinkActive ? (editor.getAttributes('link') || {}) : {}
+
+    linkSelectionRef.current = {
+      from,
+      to,
+      hasSelection: from !== to,
+      selectedText: selectedText || '',
+    }
+
+    setIsEditingExistingLink(Boolean(isLinkActive))
+    setLinkText(selectedText || '')
+    setLinkUrl(currentAttrs.href || '')
+    setLinkTargetBlank(currentAttrs.target !== null ? currentAttrs.target === '_blank' : true)
+    setLinkModalOpen(true)
+  }
+
+  // Kết nối shortcut Mod-k
+  useEffect(() => {
+    window.__vhOpenLinkModal = handleOpenLinkModal
+    return () => {
+      delete window.__vhOpenLinkModal
+    }
+  }, [editor])
+
+  // Tự động focus input khi mở Link modal
+  useEffect(() => {
+    if (linkModalOpen) {
+      const timer = setTimeout(() => {
+        if (!linkText && linkTextInputRef.current) {
+          linkTextInputRef.current.focus()
+        } else if (linkUrlInputRef.current) {
+          linkUrlInputRef.current.focus()
+          if (linkUrl) {
+            linkUrlInputRef.current.select()
+          }
+        }
+      }, 60)
+      return () => clearTimeout(timer)
+    }
+  }, [linkModalOpen])
+
+  // ── Lưu / Gán Liên Kết ──
+  const handleSaveLink = () => {
+    if (!editor) return
+
+    const trimmedUrl = linkUrl.trim()
+    if (!trimmedUrl) {
+      handleUnlink()
+      return
+    }
+
+    // Format URL thông minh:
+    let finalUrl = trimmedUrl
+    const hasProtocolOrSlash = /^(\/|#|https?:\/\/|mailto:|tel:)/i.test(trimmedUrl)
+    if (!hasProtocolOrSlash) {
+      if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(trimmedUrl)) {
+        finalUrl = 'mailto:' + trimmedUrl
+      } else if (/^(\+84|0)\d{9,10}$/.test(trimmedUrl.replace(/[\s.-]/g, ''))) {
+        finalUrl = 'tel:' + trimmedUrl.replace(/[\s.-]/g, '')
+      } else {
+        finalUrl = 'https://' + trimmedUrl
+      }
+    }
+
+    const sel = linkSelectionRef.current || editor.state.selection
+    const displayText = linkText.trim()
+    const target = linkTargetBlank ? '_blank' : null
+    const rel = linkTargetBlank ? 'noopener noreferrer' : null
+
+    // 1. Phục hồi con trỏ/vùng chọn đã lưu
+    if (sel && typeof sel.from === 'number' && typeof sel.to === 'number') {
+      editor.chain().focus().setTextSelection({ from: sel.from, to: sel.to }).run()
+    } else {
+      editor.chain().focus().run()
+    }
+
+    // 2. Nếu có vùng chọn (bôi đen chữ trước đó)
+    if (sel && sel.hasSelection) {
+      if (displayText && displayText !== sel.selectedText) {
+        editor
+          .chain()
+          .focus()
+          .insertContentAt({ from: sel.from, to: sel.to }, [
+            {
+              type: 'text',
+              text: displayText,
+              marks: [
+                {
+                  type: 'link',
+                  attrs: { href: finalUrl, target, rel, class: 'blog-content-link' },
+                },
+              ],
+            },
+          ])
+          .run()
+      } else {
+        editor
+          .chain()
+          .focus()
+          .extendMarkRange('link')
+          .setLink({ href: finalUrl, target, rel, class: 'blog-content-link' })
+          .run()
+      }
+    } else {
+      // 3. Nếu không bôi đen chữ ban đầu
+      const textToInsert = displayText || finalUrl
+      editor
+        .chain()
+        .focus()
+        .insertContent([
+          {
+            type: 'text',
+            text: textToInsert,
+            marks: [
+              {
+                type: 'link',
+                attrs: { href: finalUrl, target, rel, class: 'blog-content-link' },
+              },
+            ],
+          },
+        ])
+        .run()
+    }
+
+    setLinkModalOpen(false)
+  }
+
+  // ── Gỡ / Xóa Liên Kết ──
+  const handleUnlink = () => {
+    if (!editor) return
+    const sel = linkSelectionRef.current
+    if (sel && typeof sel.from === 'number' && typeof sel.to === 'number') {
+      editor
+        .chain()
+        .focus()
+        .setTextSelection({ from: sel.from, to: sel.to })
+        .extendMarkRange('link')
+        .unsetLink()
+        .run()
+    } else {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run()
+    }
+    setLinkModalOpen(false)
+  }
 
   useEffect(() => {
     if (!editor) return
@@ -653,6 +880,26 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
         <button type="button" className={editor.isActive('bold') ? styles.active : ''} onClick={() => editor.chain().focus().toggleBold().run()} title="In đậm"><BoldIcon size={16} /></button>
         <button type="button" className={editor.isActive('italic') ? styles.active : ''} onClick={() => editor.chain().focus().toggleItalic().run()} title="In nghiêng"><ItalicIcon size={16} /></button>
         <button type="button" className={editor.isActive('underline') ? styles.active : ''} onClick={() => editor.chain().focus().toggleUnderline().run()} title="Gạch chân"><UnderlineIcon size={16} /></button>
+
+        {/* Chèn / Sửa Link (Ctrl+K) */}
+        <button
+          type="button"
+          className={editor.isActive('link') ? styles.active : ''}
+          onClick={handleOpenLinkModal}
+          title="Chèn liên kết (Ctrl + K / Cmd + K)"
+        >
+          <LinkIcon size={16} />
+        </button>
+        {editor.isActive('link') && (
+          <button
+            type="button"
+            className={styles.unlinkBtn}
+            onClick={handleUnlink}
+            title="Gỡ bỏ liên kết"
+          >
+            <UnlinkIcon size={16} />
+          </button>
+        )}
 
         {/* Highlight */}
         <div className={styles.colorPickerWrap}>
@@ -888,6 +1135,112 @@ export default function RichTextEditor({ value, onChange, placeholder }) {
                 </button>
                 <button type="button" className={styles.modalSubmitBtn} onClick={handleSaveModal}>
                   <Check size={16} /> Cập nhật
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ── MODAL CHÈN / CHỈNH SỬA LIÊN KẾT (LINK MODAL) ── */}
+      {linkModalOpen && ReactDOM.createPortal(
+        <div className={styles.modalOverlay} onClick={() => setLinkModalOpen(false)}>
+          <div
+            className={styles.modalContent}
+            style={{ maxWidth: 460 }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleSaveLink()
+              } else if (e.key === 'Escape') {
+                e.preventDefault()
+                setLinkModalOpen(false)
+              }
+            }}
+          >
+            <div className={styles.modalHeader}>
+              <h3>
+                <LinkIcon size={18} />
+                {isEditingExistingLink ? 'Chỉnh sửa liên kết' : 'Chèn liên kết'}
+              </h3>
+              <button
+                type="button"
+                className={styles.modalCloseBtn}
+                onClick={() => setLinkModalOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className={styles.modalBody}>
+              <div className={styles.modalFormGroup}>
+                <label>Văn bản hiển thị</label>
+                <input
+                  ref={linkTextInputRef}
+                  type="text"
+                  value={linkText}
+                  onChange={(e) => setLinkText(e.target.value)}
+                  placeholder="Ví dụ: tham khảo giá, xem thêm..."
+                  className={styles.modalInput}
+                />
+              </div>
+
+              <div className={styles.modalFormGroup}>
+                <label>
+                  Đường dẫn liên kết (URL) <span style={{ color: '#dc2626' }}>*</span>
+                </label>
+                <input
+                  ref={linkUrlInputRef}
+                  type="text"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  placeholder="https://... hoặc /bang-gia"
+                  className={styles.modalInput}
+                />
+                <span className={styles.modalInputHint}>
+                  Nhập URL đầy đủ (<code>https://...</code>) hoặc đường dẫn trang (<code>/bang-gia</code>, <code>/dich-vu</code>).
+                </span>
+              </div>
+
+              <div className={styles.modalCheckboxGroup}>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={linkTargetBlank}
+                    onChange={(e) => setLinkTargetBlank(e.target.checked)}
+                  />
+                  <span>Mở trong tab mới (khuyên dùng khi liên kết ra trang khác)</span>
+                </label>
+              </div>
+            </div>
+
+            <div className={styles.modalFooter}>
+              {isEditingExistingLink && (
+                <button
+                  type="button"
+                  className={styles.modalDeleteBtn}
+                  onClick={handleUnlink}
+                  title="Xóa liên kết khỏi văn bản"
+                >
+                  <UnlinkIcon size={15} /> Gỡ liên kết
+                </button>
+              )}
+              <div className={styles.rightFooterBtns}>
+                <button
+                  type="button"
+                  className={styles.modalCancelBtn}
+                  onClick={() => setLinkModalOpen(false)}
+                >
+                  Hủy
+                </button>
+                <button
+                  type="button"
+                  className={styles.modalSubmitBtn}
+                  onClick={handleSaveLink}
+                >
+                  <Check size={16} /> {isEditingExistingLink ? 'Cập nhật' : 'Chèn link'}
                 </button>
               </div>
             </div>
