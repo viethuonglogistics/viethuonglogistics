@@ -9,7 +9,8 @@ gsap.registerPlugin(ScrollTrigger)
 
 const services = [
   {
-    id: 'domestic',
+    id: 'van-tai-hang-noi-dia-va-quoc-te',
+    slug: 'van-tai-hang-noi-dia-va-quoc-te',
     icon: (
       <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="6" y="14" width="36" height="24" rx="2" />
@@ -19,14 +20,15 @@ const services = [
       </svg>
     ),
     label: '01',
-    title: 'Vận Chuyển Nội Địa',
-    desc: 'Mạng lưới 63 tỉnh thành, giao hàng đúng hẹn với đội xe tải trọng tải 1–30 tấn.',
-    features: ['Xe tải, container', 'Theo dõi GPS thời gian thực', 'Bảo hiểm hàng hóa'],
+    title: 'Vận Tải Hàng Nội Địa Và Quốc Tế',
+    desc: 'Giải pháp vận tải đa phương thức kết hợp đường bộ 63 tỉnh thành, đường biển FCL/LCL và hàng không toàn cầu.',
+    features: ['Đa phương thức', 'Incoterms FOB/CIF', 'GPS tracking 24/7'],
     image: 'https://images.unsplash.com/photo-1601584115197-04ecc0da31d7?w=900&q=80&auto=format',
-    size: 'large',
+    link: '/dich-vu/van-tai-hang-noi-dia-va-quoc-te',
   },
   {
-    id: 'international',
+    id: 'nhan-uy-thac-xuat-khau-nhap-khau',
+    slug: 'nhan-uy-thac-xuat-khau-nhap-khau',
     icon: (
       <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M4 24C4 13 13 4 24 4s20 9 20 20-9 20-20 20S4 35 4 24z" />
@@ -34,14 +36,15 @@ const services = [
       </svg>
     ),
     label: '02',
-    title: 'Vận Chuyển Quốc Tế',
-    desc: 'Kết nối Việt Nam với ASEAN, Trung Quốc, châu Âu qua đường bộ, biển và hàng không.',
-    features: ['Thủ tục hải quan', 'Door-to-door', 'FCL & LCL'],
-    image: 'https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=900&q=80&auto=format',
-    size: 'tall',
+    title: 'Nhận Ủy Thác Xuất Khẩu, Nhập Khẩu',
+    desc: 'Đại diện tìm kiếm nguồn hàng, thương lượng giá quốc tế, thanh toán và xử lý thủ tục hải quan trọn gói.',
+    features: ['Ủy thác XNK trọn gói', 'Chứng từ C/O, FDA', 'Thanh toán quốc tế'],
+    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?w=900&q=80&auto=format',
+    link: '/dich-vu/nhan-uy-thac-xuat-khau-nhap-khau',
   },
   {
-    id: 'warehouse',
+    id: 'cho-thue-kho-bai',
+    slug: 'cho-thue-kho-bai',
     icon: (
       <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
         <rect x="4" y="10" width="40" height="30" rx="2" />
@@ -49,14 +52,15 @@ const services = [
       </svg>
     ),
     label: '03',
-    title: 'Logistics & Kho Bãi',
-    desc: 'Hệ thống kho hiện đại tại TP.HCM, Hà Nội, Đà Nẵng. Quản lý hàng hóa tự động.',
-    features: ['Kho lạnh & kho thường', 'Hệ thống WMS', 'Bốc xếp chuyên nghiệp'],
+    title: 'Cho Thuê Kho, Bãi',
+    desc: 'Hệ thống kho bãi tiêu chuẩn tại Đà Nẵng, Hải Phòng, TP.HCM với phần mềm quản lý WMS thông minh.',
+    features: ['Hệ thống WMS hiện đại', 'Kho tiêu chuẩn an toàn', 'Bảo hiểm hàng hóa 100%'],
     image: 'https://images.unsplash.com/photo-1553413077-190dd305871c?w=900&q=80&auto=format',
-    size: 'small',
+    link: '/dich-vu/cho-thue-kho-bai',
   },
   {
-    id: 'express',
+    id: 'dich-vu-tron-goi-hang-du-an',
+    slug: 'dich-vu-tron-goi-hang-du-an',
     icon: (
       <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
         <path d="M10 8h28l4 12H6L10 8z" />
@@ -67,11 +71,27 @@ const services = [
       </svg>
     ),
     label: '04',
-    title: 'Chuyển Phát Nhanh',
-    desc: 'Giao hàng nội thành trong 2–4 giờ, liên tỉnh 24–48 giờ. Cam kết đúng giờ.',
-    features: ['Giao hàng hỏa tốc', 'COD linh hoạt', 'App theo dõi đơn hàng'],
+    title: 'Dịch Vụ Trọn Gói Hàng Dự Án',
+    desc: 'Vận chuyển hàng công trình, máy móc thiết bị nhà xưởng và hàng siêu trường siêu trọng chuyên nghiệp.',
+    features: ['Hàng siêu trường siêu trọng', 'Khảo sát hiện trường', 'Phương tiện chuyên dụng'],
     image: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?w=900&q=80&auto=format',
-    size: 'wide',
+    link: '/dich-vu/dich-vu-tron-goi-hang-du-an',
+  },
+  {
+    id: 'dich-vu-giao-nhan-thu-tuc-hai-quan',
+    slug: 'dich-vu-giao-nhan-thu-tuc-hai-quan',
+    icon: (
+      <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <path d="M24 4L6 12v12c0 11.1 7.7 21.5 18 24 10.3-2.5 18-12.9 18-24V12L24 4z" />
+        <path d="M18 24l4 4 8-8" />
+      </svg>
+    ),
+    label: '05',
+    title: 'Dịch Vụ Giao Nhận, Thủ Tục Hải Quan',
+    desc: 'Khai báo hải quan điện tử nhanh chóng, tư vấn áp mã HS Code tối ưu thuế, hỗ trợ C/O và giao nhận Door-to-Door.',
+    features: ['Thông quan nhanh chóng', 'Tư vấn mã HS Code', 'Giao nhận Door-to-Door'],
+    image: 'https://images.unsplash.com/photo-1616401784845-180882ba9ba8?w=900&q=80&auto=format',
+    link: '/dich-vu/dich-vu-giao-nhan-thu-tuc-hai-quan',
   },
 ]
 
@@ -201,12 +221,16 @@ export default function Services() {
   return (
     <section id="services" ref={sectionRef} className={styles.services}>
       <div className={styles.container}>
-        {/* ── Tiêu đề căn giữa chuẩn như ảnh mẫu ── */}
+        {/* ── Tiêu đề căn giữa phong cách hiện đại, thanh lịch ── */}
         <div className={styles.header}>
+          <span className={styles.headerLabel}>DỊCH VỤ CỦA CHÚNG TÔI</span>
           <h2 className={styles.headerTitle}>
             {section.title || 'Giải Pháp Vận Tải'}
             {section.accent && <span className={styles.accent}> {section.accent}</span>}
           </h2>
+          <p className={styles.headerSub}>
+            Cung cấp các giải pháp logistics và vận chuyển toàn diện, tối ưu chi phí và đồng hành cùng sự phát triển bền vững của doanh nghiệp
+          </p>
         </div>
 
         {/* ── Lưới các ô vuông/thẻ dịch vụ chuẩn đều đặn theo chủ đề Đỏ - Đen - Trắng ── */}
@@ -226,6 +250,10 @@ export default function Services() {
                   alt={s.title}
                   className={styles.cardImg}
                   loading="lazy"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?q=80&w=1200&auto=format&fit=crop';
+                  }}
                 />
                 <div className={styles.imageShine} aria-hidden="true" />
                 <span className={styles.cardBadge}>{s.label || `0${i + 1}`}</span>
@@ -244,7 +272,7 @@ export default function Services() {
                 {/* Danh sách chữ mô tả nhỏ nhỏ (Features) — điểm nhấn khi di chuột vào */}
                 {Array.isArray(s.features) && s.features.length > 0 && (
                   <ul className={styles.cardFeatures}>
-                    {s.features.map((f, fi) => (
+                    {s.features.slice(0, 3).map((f, fi) => (
                       <li key={fi}>
                         <span className={styles.checkIcon}>
                           <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">

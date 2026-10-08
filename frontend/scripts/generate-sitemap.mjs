@@ -15,10 +15,11 @@ const staticPages = [
 ]
 
 const fallbackServices = [
-  'van-chuyen-noi-dia',
-  'van-chuyen-quoc-te',
-  'logistics-kho-bai',
-  'chuyen-phat-nhanh',
+  'van-tai-hang-noi-dia-va-quoc-te',
+  'nhan-uy-thac-xuat-khau-nhap-khau',
+  'cho-thue-kho-bai',
+  'dich-vu-tron-goi-hang-du-an',
+  'dich-vu-giao-nhan-thu-tuc-hai-quan',
 ]
 
 const escapeXml = (value) =>

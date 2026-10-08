@@ -25,6 +25,13 @@ const ICON_MAP = {
 }
 gsap.registerPlugin(ScrollTrigger);
 
+const LEGACY_SLUG_MAP = {
+  'van-chuyen-noi-dia': 'van-tai-hang-noi-dia-va-quoc-te',
+  'van-chuyen-quoc-te': 'van-tai-hang-noi-dia-va-quoc-te',
+  'logistics-kho-bai': 'cho-thue-kho-bai',
+  'chuyen-phat-nhanh': 'van-tai-hang-noi-dia-va-quoc-te',
+};
+
 /* ════════════════════════════════════════════════════════════
    PAGE — lấy data theo :id
    ════════════════════════════════════════════════════════════ */
@@ -34,19 +41,23 @@ export default function ServiceDetailPage() {
   const [allServices, setAllServices] = useState(TIMELINE_SERVICES)
   const [loading, setLoading] = useState(true)
 
+  if (LEGACY_SLUG_MAP[id]) {
+    return <Navigate to={`/dich-vu/${LEGACY_SLUG_MAP[id]}`} replace />
+  }
+
   useEffect(() => {
     axios.get(`${API_BASE}/services-page/items`)
       .then(res => {
         const list = res.data.data || []
         if (list.length > 0) {
           setAllServices(list)
-          setService(list.find(svc => svc.slug === id) || null)
+          setService(list.find(svc => svc.slug === id || svc.id === id) || null)
         } else {
-          setService(TIMELINE_SERVICES.find(svc => svc.id === id) || null)
+          setService(TIMELINE_SERVICES.find(svc => svc.id === id || svc.slug === id) || null)
         }
       })
       .catch(() => {
-        setService(TIMELINE_SERVICES.find(svc => svc.id === id) || null)
+        setService(TIMELINE_SERVICES.find(svc => svc.id === id || svc.slug === id) || null)
       })
       .finally(() => setLoading(false))
   }, [id])
@@ -182,76 +193,7 @@ const ServiceDetailHero = ({ service }) => {
   );
 };
 
-/* ════════════════════════════════════════════════════════════
-   CONTENT — mô tả chi tiết + highlights
-   Dữ liệu tĩnh — về sau thay bằng API call theo service.id
-   ════════════════════════════════════════════════════════════ */
-const SERVICE_DETAIL_DATA = {
-  'van-chuyen-noi-dia': {
-    highlights: [
-      { num: '63+', label: 'Tỉnh thành phủ sóng' },
-      { num: '500kg–20T', label: 'Tải trọng đa dạng' },
-      { num: '24/7', label: 'GPS tracking thực tế' },
-      { num: '99.2%', label: 'Tỷ lệ giao đúng hẹn' },
-    ],
-    features: [
-      'Đội xe hơn 200 phương tiện, tải trọng từ 500kg đến 20 tấn.',
-      'Hệ thống GPS theo dõi lộ trình thực tế, cập nhật liên tục 24/7.',
-      'Lịch trình cố định hàng ngày tuyến HCM – Đà Nẵng – Hà Nội.',
-      'Bảo hiểm hàng hóa toàn hành trình, bồi thường nhanh trong 48h.',
-      'Tài xế được đào tạo chuyên nghiệp, kinh nghiệm trung bình 8 năm.',
-      'Hệ thống chứng từ điện tử, tra cứu đơn hàng trực tuyến dễ dàng.',
-    ],
-  },
-  'van-chuyen-quoc-te': {
-    highlights: [
-      { num: '40+', label: 'Quốc gia kết nối' },
-      { num: 'FCL/LCL', label: 'Đường biển linh hoạt' },
-      { num: '48h', label: 'Xử lý hải quan nhanh' },
-      { num: '15+', label: 'Năm kinh nghiệm xuất nhập khẩu' },
-    ],
-    features: [
-      'Kết nối Đông Nam Á, Trung Quốc, Nhật Bản và châu Âu.',
-      'Dịch vụ đường biển FCL (nguyên container) & LCL (ghép hàng).',
-      'Vận tải hàng không nhanh chóng cho hàng có giá trị cao.',
-      'Tư vấn phân loại HS Code và tối ưu thuế nhập khẩu.',
-      'Hỗ trợ thủ tục hải quan trọn gói, từ khai báo đến thông quan.',
-      'Dịch vụ Door-to-Door: nhận hàng tại kho, giao tận đích.',
-    ],
-  },
-  'logistics-kho-bai': {
-    highlights: [
-      { num: '50,000m²', label: 'Tổng diện tích kho' },
-      { num: 'WMS', label: 'Phần mềm quản lý hiện đại' },
-      { num: '100%', label: 'Hàng được bảo hiểm' },
-      { num: 'Real-time', label: 'Kiểm kê & báo cáo' },
-    ],
-    features: [
-      'Hệ thống kho đạt chuẩn, nhiệt độ kiểm soát theo yêu cầu hàng hóa.',
-      'Trang bị xe nâng, băng tải và hệ thống rack hiện đại.',
-      'Phần mềm WMS quản lý tồn kho theo thời gian thực.',
-      'Kiểm kê định kỳ minh bạch, báo cáo gửi email hàng tuần.',
-      'Dịch vụ đóng gói, dán nhãn và phân loại theo yêu cầu.',
-      'Bảo hiểm hàng hóa toàn diện trong suốt thời gian lưu kho.',
-    ],
-  },
-  'chuyen-phat-nhanh': {
-    highlights: [
-      { num: '4h', label: 'Giao nội thành' },
-      { num: '24h', label: 'Giao liên tỉnh' },
-      { num: 'COD', label: 'Thu hộ tiền mặt' },
-      { num: '3 sàn', label: 'Shopee · Lazada · TikTok' },
-    ],
-    features: [
-      'Cam kết giao hàng nội thành trong 4 giờ kể từ lúc lấy.',
-      'Liên tỉnh 24 giờ cho các tuyến HCM – Đà Nẵng – Hà Nội.',
-      'Dịch vụ COD thu hộ tiền, chuyển khoản về trong ngày.',
-      'Tích hợp API với Shopee, Lazada, TikTok Shop, đồng bộ đơn tự động.',
-      'Ứng dụng tra cứu đơn hàng real-time cho người gửi và người nhận.',
-      'Đội giao hàng chuyên nghiệp, đồng phục, có mã nhân viên xác minh.',
-    ],
-  },
-};
+
 
 const ServiceDetailContent = ({ service, allServices = TIMELINE_SERVICES }) => {
   const sectionRef = useRef(null);
@@ -377,7 +319,7 @@ const ServiceDetailContent = ({ service, allServices = TIMELINE_SERVICES }) => {
         <div className={s.otherServices}>
           <h3 className={s.otherTitle}>Dịch Vụ Khác</h3>
           <div className={s.otherGrid}>
-       {allServices.filter(svc => svc.id !== service.id).map(svc => (
+       {allServices.filter(svc => (svc.slug || svc.id) !== (service.slug || service.id)).map(svc => (
               <Link key={svc.id || svc.slug} to={svc.link || `/dich-vu/${svc.slug}`} className={s.otherCard}>
                 <div className={s.otherCardIcon}>{svc.icon || ICON_MAP[svc.icon_key] || <Truck size={22} />}</div>
                 <div>

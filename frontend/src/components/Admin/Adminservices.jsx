@@ -401,7 +401,7 @@ const loadAll = useCallback(() => {
             <div className={styles.emptyState}>
               <p>Database chưa có dịch vụ nào.</p>
               <button className={styles.addBtn} onClick={seedDefaultServices} disabled={seeding}>
-                <Plus size={16} /> {seeding ? 'Đang khởi tạo...' : 'Tạo 4 dịch vụ hiện tại'}
+                <Plus size={16} /> {seeding ? 'Đang khởi tạo...' : 'Khởi tạo 5 dịch vụ mặc định'}
               </button>
             </div>
           )}

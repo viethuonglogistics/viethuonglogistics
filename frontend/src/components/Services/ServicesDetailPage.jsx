@@ -29,48 +29,64 @@ gsap.registerPlugin(ScrollTrigger);
 /* ─── DATA ──────────────────────────────────────────────── */
 export const TIMELINE_SERVICES = [
   {
-    id: 'van-chuyen-noi-dia',
+    id: 'van-tai-hang-noi-dia-va-quoc-te',
+    slug: 'van-tai-hang-noi-dia-va-quoc-te',
     label: '01',
-    title: 'Vận Chuyển Nội Địa',
-    subtitle: 'Phủ khắp 63 tỉnh thành',
-    desc: 'Đội xe đa tải trọng từ 500kg đến 20 tấn, GPS tracking 24/7, cam kết giao đúng hẹn. Lịch trình cố định hàng ngày trên tuyến HCM – Đà Nẵng và toàn quốc.',
+    title: 'Vận Tải Hàng Nội Địa Và Quốc Tế',
+    subtitle: 'Đường bộ, đường biển & hàng không',
+    desc: 'Cung cấp giải pháp vận tải toàn diện theo các điều kiện Incoterms (FOB, CIF, EXW, DAP...). Kết hợp linh hoạt vận tải đường bộ 63 tỉnh thành, đường biển FCL/LCL và hàng không quốc tế, tối ưu lộ trình và chi phí.',
     icon: <Truck size={22} />,
-    image: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?q=80&w=1200&auto=format&fit=crop',
-    tags: ['GPS 24/7', 'Đa tải trọng', 'Toàn quốc'],
-    link: '/dich-vu/van-chuyen-noi-dia',
-  },
-  {
-    id: 'van-chuyen-quoc-te',
-    label: '02',
-    title: 'Vận Chuyển Quốc Tế',
-    subtitle: 'Đường biển & hàng không',
-    desc: 'Kết nối Đông Nam Á, Trung Quốc và châu Âu qua đối tác đại lý toàn cầu. Xử lý thủ tục hải quan nhanh, tư vấn phân loại HS Code chuyên nghiệp.',
-    icon: <Globe size={22} />,
     image: 'https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?q=80&w=1200&auto=format&fit=crop',
-    tags: ['FCL / LCL', 'Hải quan', 'Door to Door'],
-    link: '/dich-vu/van-chuyen-quoc-te',
+    tags: ['Đa phương thức', 'Incoterms FOB/CIF', 'Toàn quốc & Quốc tế', 'GPS 24/7'],
+    link: '/dich-vu/van-tai-hang-noi-dia-va-quoc-te',
   },
   {
-    id: 'logistics-kho-bai',
+    id: 'nhan-uy-thac-xuat-khau-nhap-khau',
+    slug: 'nhan-uy-thac-xuat-khau-nhap-khau',
+    label: '02',
+    title: 'Nhận Ủy Thác Xuất Khẩu, Nhập Khẩu',
+    subtitle: 'Giải pháp xuất nhập khẩu toàn diện',
+    desc: 'Đại diện doanh nghiệp thực hiện thủ tục xuất nhập khẩu trọn gói: Tìm nguồn hàng, đàm phán thương mại quốc tế, đứng tên tờ khai hải quan, thanh toán quốc tế và xử lý chứng từ C/O, FDA, CE.',
+    icon: <Globe size={22} />,
+    image: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=1200&auto=format&fit=crop',
+    tags: ['Ủy thác trọn gói', 'Chứng từ C/O, FDA', 'Tìm nguồn hàng', 'Thanh toán quốc tế'],
+    link: '/dich-vu/nhan-uy-thac-xuat-khau-nhap-khau',
+  },
+  {
+    id: 'cho-thue-kho-bai',
+    slug: 'cho-thue-kho-bai',
     label: '03',
-    title: 'Logistics & Kho Bãi',
-    subtitle: 'Lưu trữ thông minh',
-    desc: 'Hệ thống kho bãi đạt chuẩn, trang bị xe nâng và băng tải hiện đại. Quản lý hàng hóa bằng phần mềm, kiểm kê định kỳ minh bạch và chính xác.',
+    title: 'Cho Thuê Kho, Bãi',
+    subtitle: 'Hệ thống kho bãi tiêu chuẩn',
+    desc: 'Hệ thống kho bãi tiêu chuẩn tại các vị trí chiến lược (Đà Nẵng, Hải Phòng, TP.HCM). Diện tích linh hoạt, quản lý bằng phần mềm WMS hiện đại, camera giám sát 24/7 và dịch vụ đóng gói, phân phối chuyên nghiệp.',
     icon: <Warehouse size={22} />,
     image: 'https://images.unsplash.com/photo-1553413077-190dd305871c?q=80&w=1200&auto=format&fit=crop',
-    tags: ['WMS', 'Kiểm kê định kỳ', 'Bảo hiểm hàng'],
-    link: '/dich-vu/logistics-kho-bai',
+    tags: ['Hệ thống WMS', 'Kho tiêu chuẩn', 'Đóng gói & Phân phối', 'Bảo hiểm 100%'],
+    link: '/dich-vu/cho-thue-kho-bai',
   },
   {
-    id: 'chuyen-phat-nhanh',
+    id: 'dich-vu-tron-goi-hang-du-an',
+    slug: 'dich-vu-tron-goi-hang-du-an',
     label: '04',
-    title: 'Chuyển Phát Nhanh',
-    subtitle: 'Giao hỏa tốc trong ngày',
-    desc: 'Cam kết giao hàng nội thành trong 4 giờ, liên tỉnh trong 24 giờ. Dịch vụ COD thu hộ tiền, hỗ trợ sàn thương mại điện tử Shopee, Lazada, TikTok Shop.',
+    title: 'Dịch Vụ Trọn Gói Hàng Dự Án',
+    subtitle: 'Hàng siêu trường, siêu trọng & thiết bị',
+    desc: 'Khảo sát hiện trường, lập phương án vận chuyển kỹ thuật chuyên biệt cho máy móc thiết bị nhà xưởng, dây chuyền sản xuất và hàng siêu trường siêu trọng, đảm bảo an toàn tuyệt đối và đúng tiến độ dự án.',
     icon: <Zap size={22} />,
+    image: 'https://images.unsplash.com/photo-1519003722824-194d4455a60c?q=80&w=1200&auto=format&fit=crop',
+    tags: ['Hàng siêu trọng', 'Khảo sát hiện trường', 'Phương tiện chuyên dụng', 'Tiến độ chính xác'],
+    link: '/dich-vu/dich-vu-tron-goi-hang-du-an',
+  },
+  {
+    id: 'dich-vu-giao-nhan-thu-tuc-hai-quan',
+    slug: 'dich-vu-giao-nhan-thu-tuc-hai-quan',
+    label: '05',
+    title: 'Dịch Vụ Giao Nhận, Thủ Tục Hải Quan',
+    subtitle: 'Thông quan nhanh chóng & chuyên nghiệp',
+    desc: 'Tư vấn mã HS Code và thuế suất, xử lý thủ tục hải quan tại cảng biển, sân bay và cửa khẩu. Khai báo điện tử nhanh chóng, xin cấp C/O, kiểm tra chuyên ngành và giao nhận tận nơi Door-to-Door.',
+    icon: <ShieldCheck size={22} />,
     image: 'https://images.unsplash.com/photo-1616401784845-180882ba9ba8?q=80&w=1200&auto=format&fit=crop',
-    tags: ['COD', '4h nội thành', 'E-commerce'],
-    link: '/dich-vu/chuyen-phat-nhanh',
+    tags: ['Khai báo hải quan', 'Tư vấn HS Code', 'C/O các form', 'Door-to-Door'],
+    link: '/dich-vu/dich-vu-giao-nhan-thu-tuc-hai-quan',
   },
 ];
 
@@ -232,9 +248,9 @@ const TimelineCard = ({ service, index }) => {
             <span className={s.cardArrow}><ArrowRight size={15} /></span>
           </div>
           <p className={s.cardSubtitle}>{service.subtitle}</p>
-          <p className={s.cardDesc}>{service.desc}</p>
+          <p className={s.cardDesc}>{service.description || service.desc}</p>
           <ul className={s.tagList}>
-            {service.tags.map(t => <li key={t} className={s.tag}>{t}</li>)}
+            {(Array.isArray(service.tags) ? service.tags : []).map(t => <li key={t} className={s.tag}>{t}</li>)}
           </ul>
         </div>
       </Link>
@@ -685,10 +701,11 @@ export const ContactSection = ({ contactData }) => {
                             required
                           >
                             <option value="">Chọn dịch vụ…</option>
-                            <option>Vận chuyển nội địa</option>
-                            <option>Vận chuyển quốc tế</option>
-                            <option>Logistics &amp; Kho bãi</option>
-                            <option>Chuyển phát nhanh</option>
+                            <option>Vận tải hàng nội địa và quốc tế</option>
+                            <option>Nhận ủy thác xuất khẩu, nhập khẩu</option>
+                            <option>Cho thuê kho, bãi</option>
+                            <option>Dịch vụ trọn gói hàng dự án</option>
+                            <option>Dịch vụ giao nhận, thủ tục hải quan</option>
                           </select>
                         </div>
                         <div className={s.formGroup}>
@@ -783,7 +800,7 @@ export default function ServicesSections() {
       <Seo
         path="/dich-vu"
         title="Dịch vụ vận tải và Logistics | Việt Hương Logistics"
-        description="Khám phá dịch vụ vận chuyển nội địa, quốc tế, logistics kho bãi và chuyển phát nhanh của Việt Hương Logistics."
+        description="Khám phá các dịch vụ: Vận tải hàng nội địa và quốc tế, Nhận ủy thác xuất nhập khẩu, Cho thuê kho bãi, Dịch vụ trọn gói hàng dự án, Giao nhận và thủ tục hải quan của Việt Hương Logistics."
       />
       <ServicesBanner  bannerData={pageData?.banner} />
       <ServiceTimeline services={services || TIMELINE_SERVICES} />
