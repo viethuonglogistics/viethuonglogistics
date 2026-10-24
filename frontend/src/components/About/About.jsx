@@ -1,14 +1,11 @@
 import { useRef, useEffect, Suspense, useState, useCallback, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { useGLTF, Environment, ContactShadows } from '@react-three/drei'
+import { useGLTF, Environment, ContactShadows, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { gsap } from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import styles from './About.module.scss'
 import { homePageApi } from '../../services/api'
-
-gsap.registerPlugin(ScrollTrigger)
 
 // ─── Themes ────────────────────────────────────────────────────────────────
 const THEMES = {
@@ -57,6 +54,7 @@ const SLIDES = [
     body: 'Viet Huong Logistics — thành viên chiến lược của Viet Huong Group — cung cấp giải pháp logistics toàn diện, kết nối doanh nghiệp Việt Nam với thị trường toàn cầu bằng công nghệ hiện đại và đội ngũ chuyên nghiệp.',
     pills: ['Vận chuyển nội địa', 'Xuất nhập khẩu', 'Mua hộ quốc tế', 'Kết nối toàn cầu'],
     image: IMAGES.intro,
+    imageTag: 'HỆ THỐNG VẬN TẢI',
     cta: true,
   },
   {
@@ -72,6 +70,7 @@ const SLIDES = [
       { num: '99%', raw: 99, suffix: '%', desc: 'Giao hàng đúng hẹn' },
     ],
     image: IMAGES.stats,
+    imageTag: 'QUY MÔ VẬN HÀNH',
   },
   {
     theme: 'navy',
@@ -86,6 +85,7 @@ const SLIDES = [
       { year: '2023', event: 'Ra mắt hệ thống tracking thời gian thực' },
     ],
     image: IMAGES.milestones,
+    imageTag: 'DẤU ẤN TRƯỞNG THÀNH',
   },
   {
     theme: 'slate',
@@ -111,11 +111,19 @@ const SLIDES = [
       },
     ],
     image: IMAGES.values,
+    imageTag: 'TRIẾT LÝ PHÁT TRIỂN',
   },
 ]
 
-const INIT_ROT_Y = Math.PI * 1.5
-const END_ROT_Y = Math.PI * 1.25 - (Math.PI * 2 / 3)
+// Góc nhìn đặc trưng cho từng slide
+const SLIDE_ANGLES = [
+  Math.PI * 1.35, // 01: Giới thiệu (góc 3/4 trước oai vệ)
+  Math.PI * 1.05, // 02: Con số (góc nghiêng thân xe khoe chiều dài chassis)
+  Math.PI * 0.72, // 03: Lịch sử (góc 3/4 sau và hệ thống bánh kép)
+  Math.PI * 1.82, // 04: Tầm nhìn (góc chính diện mạnh mẽ)
+]
+
+const SLIDE_DURATION = 6500
 const TRUCK_MODEL_URL = '/models/truck-optimized.glb'
 
 const DEFAULT_ABOUT_INTRO = {
@@ -138,15 +146,6 @@ function normalizePills(value) {
     .filter(Boolean)
 }
 
-// ─── Lấy invalidate từ trong Canvas ra ngoài ───────────────────────────────
-function InvalidateOnScroll({ invalidateRef }) {
-  const { invalidate } = useThree()
-  useEffect(() => {
-    invalidateRef.current = invalidate
-  }, [invalidate, invalidateRef])
-  return null
-}
-
 function CameraSetup() {
   const { camera } = useThree()
   useEffect(() => {
@@ -155,10 +154,10 @@ function CameraSetup() {
   return null
 }
 
-function Truck({ targetRef }) {
+function Truck({ targetRef, isHovered }) {
   const { scene } = useGLTF(TRUCK_MODEL_URL)
   const meshRef = useRef()
-  const cur = useRef({ rotY: INIT_ROT_Y, posX: 0 })
+  const cur = useRef({ rotY: SLIDE_ANGLES[0], posX: 0 })
   const ready = useRef(false)
   const [offsetY, setOffsetY] = useState(0)
 
@@ -166,39 +165,53 @@ function Truck({ targetRef }) {
     if (!scene) return
     const box = new THREE.Box3().setFromObject(scene)
     setOffsetY(-box.min.y)
-    if (meshRef.current) meshRef.current.rotation.y = INIT_ROT_Y
+    if (meshRef.current) meshRef.current.rotation.y = SLIDE_ANGLES[0]
     ready.current = true
   }, [scene])
 
-  useFrame(({ invalidate }, delta) => {
+  useFrame((state, delta) => {
     if (!meshRef.current || !ready.current) return
     const alpha = 1 - Math.pow(0.003, delta)
     const dRotY = targetRef.current.rotY - cur.current.rotY
-    const dPosX = targetRef.current.posX - cur.current.posX
     cur.current.rotY += dRotY * alpha
-    cur.current.posX += dPosX * alpha
+
+    // Tự động xoay nhẹ nhàng liên tục (showroom turntable) khi không tương tác rê chuột
+    if (!isHovered.current) {
+      targetRef.current.rotY += delta * 0.08
+    }
+
     meshRef.current.rotation.y = cur.current.rotY
-    meshRef.current.position.x = cur.current.posX
-    // Tiếp tục render cho đến khi lerp xong
-    if (Math.abs(dRotY) > 0.0001 || Math.abs(dPosX) > 0.0001) invalidate()
   })
 
-  return <primitive ref={meshRef} object={scene} scale={1.1} position={[0, offsetY, 0]} />
+  return <primitive ref={meshRef} object={scene} scale={1.14} position={[0, offsetY, 0]} />
 }
 useGLTF.preload(TRUCK_MODEL_URL)
 
-// ─── Main ──────────────────────────────────────────────────────────────────
+// ─── Main Component ────────────────────────────────────────────────────────
 export default function About() {
   const sectionRef = useRef(null)
-  const canvasWrapRef = useRef(null)
   const slideRefs = useRef([])
-  const wipeRefs = useRef([])
   const bgRef = useRef(null)
   const mountedRef = useRef(true)
   const counterTweens = useRef([])
-  const invalidateRef = useRef(null)
+  const isCanvasHovered = useRef(false)
+
   const [active, setActive] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
   const [aboutIntro, setAboutIntro] = useState(DEFAULT_ABOUT_INTRO)
+
+  const truckTarget = useRef({ rotY: SLIDE_ANGLES[0] })
+
+  const [renderQuality] = useState(() => {
+    if (typeof window === 'undefined') return { antialias: true, dpr: 1 }
+    const cpuCores = navigator.hardwareConcurrency || 8
+    const memory = navigator.deviceMemory || 8
+    const constrained = window.matchMedia('(max-width: 960px)').matches || cpuCores <= 4 || memory <= 4
+    return {
+      antialias: !constrained,
+      dpr: constrained ? 1 : [1, 1.1],
+    }
+  })
 
   useEffect(() => {
     let cancelled = false
@@ -231,18 +244,6 @@ export default function About() {
     })
   }, [aboutIntro])
 
-  const truckTarget = useRef({ rotY: INIT_ROT_Y, posX: 0 })
-  const [renderQuality] = useState(() => {
-    if (typeof window === 'undefined') return { antialias: true, dpr: 1 }
-    const cpuCores = navigator.hardwareConcurrency || 8
-    const memory = navigator.deviceMemory || 8
-    const constrained = window.matchMedia('(max-width: 960px)').matches || cpuCores <= 4 || memory <= 4
-    return {
-      antialias: !constrained,
-      dpr: constrained ? 1 : [1, 1.1],
-    }
-  })
-
   const applyTheme = useCallback((themeName) => {
     if (!mountedRef.current) return
     const t = THEMES[themeName] || THEMES.red
@@ -268,7 +269,7 @@ export default function About() {
       const suffix = node.dataset.suffix || ''
       node.innerText = '0' + suffix
       const tween = gsap.to(node, {
-        duration: 2.2,
+        duration: 2.0,
         ease: 'power3.out',
         onUpdate() {
           if (!mountedRef.current || !node.isConnected) return
@@ -279,128 +280,43 @@ export default function About() {
     })
   }, [])
 
+  // Chuyển slide thủ công hoặc tự động
+  const switchSlide = useCallback((nextIdx) => {
+    setActive(nextIdx)
+    applyTheme(slides[nextIdx]?.theme)
+    truckTarget.current.rotY = SLIDE_ANGLES[nextIdx]
+    if (nextIdx === 1) {
+      setTimeout(() => animateCounters(), 150)
+    }
+  }, [animateCounters, applyTheme, slides])
+
+  // Autoplay tự động chuyển slide mỗi 6.5s (dừng lại khi rê chuột vào)
+  useEffect(() => {
+    if (isPaused) return
+    const interval = setInterval(() => {
+      setActive(prev => {
+        const next = (prev + 1) % slides.length
+        applyTheme(slides[next]?.theme)
+        truckTarget.current.rotY = SLIDE_ANGLES[next]
+        if (next === 1) setTimeout(() => animateCounters(), 150)
+        return next
+      })
+    }, SLIDE_DURATION)
+
+    return () => clearInterval(interval)
+  }, [isPaused, slides.length, applyTheme, animateCounters])
+
   useEffect(() => {
     mountedRef.current = true
-    const section = sectionRef.current
-    if (!section) return
-    slideRefs.current.forEach((el, i) => {
-      if (!el) return
-      el.style.position = 'absolute'
-      el.style.top = '0'
-      el.style.left = '0'
-      el.style.width = '100%'
-      el.style.height = '100%'
-      el.style.opacity = i === 0 ? '1' : '0'
-      el.style.pointerEvents = i === 0 ? 'auto' : 'none'
-      el.style.transform = 'none'
-    })
-    wipeRefs.current.forEach(el => {
-      if (!el) return
-      gsap.set(el, { clipPath: 'inset(0 0 0 100%)' })
-    })
-    if (canvasWrapRef.current) gsap.set(canvasWrapRef.current, { x: 0, opacity: 1 })
-    applyTheme('red')
-
-    let currentSlide = 0
-    let pendingSlide = 0
-    let wipeTl = null
-    let isAnimating = false
-
-    const goToSlide = (nextIdx) => {
-      if (!mountedRef.current) return
-      if (nextIdx === currentSlide && !isAnimating) return
-      if (nextIdx === pendingSlide && isAnimating) return
-      pendingSlide = nextIdx
-
-      if (wipeTl) {
-        wipeTl.kill(); wipeTl = null
-        slideRefs.current.forEach((el, i) => {
-          if (!el) return
-          gsap.set(el, {
-            opacity: i === currentSlide ? 1 : 0,
-            pointerEvents: i === currentSlide ? 'auto' : 'none',
-            y: 0,
-          })
-        })
-        wipeRefs.current.forEach(el => { if (el) gsap.set(el, { clipPath: 'inset(0 0 0 100%)' }) })
-      }
-
-      const outEl = slideRefs.current[currentSlide]
-      const inEl = slideRefs.current[nextIdx]
-      const wipeEl = wipeRefs.current[nextIdx] ?? wipeRefs.current[0]
-      const dir = nextIdx > currentSlide ? 1 : -1
-      if (!inEl || !wipeEl) return
-
-      const nt = THEMES[slides[nextIdx]?.theme] || THEMES.red
-      wipeEl.style.background = nt.accent
-      gsap.set(wipeEl, { clipPath: 'inset(0 100% 0 0)' })
-
-      isAnimating = true
-      currentSlide = nextIdx
-
-      wipeTl = gsap.timeline({
-        onComplete: () => {
-          isAnimating = false; wipeTl = null
-          if (outEl) gsap.set(outEl, { opacity: 0, pointerEvents: 'none' })
-          // Reset wipeBar — xóa màu accent còn đọng lại
-          if (wipeEl) {
-            wipeEl.style.background = 'transparent'
-            gsap.set(wipeEl, { clipPath: 'inset(0 0 0 100%)' })
-          }
-        },
-      })
-      wipeTl
-        .call(() => {
-          if (!mountedRef.current) return
-          applyTheme(slides[nextIdx].theme)
-          gsap.set(inEl, { opacity: 0, pointerEvents: 'auto' })
-        })
-        .to(outEl, { opacity: 0, duration: 0.5, ease: 'power2.inOut' })
-        .to(inEl, { opacity: 1, duration: 0.5, ease: 'power2.inOut' }, '-=0.25')
-      if (nextIdx === 1) wipeTl.call(animateCounters, [], '+=0.1')
-    }
-
-    let lastIdx = 0
-
-    const aboutTrigger = ScrollTrigger.create({
-      trigger: section,
-      start: 'top top',
-      end: 'bottom top',
-      invalidateOnRefresh: true,
-      onUpdate: (self) => {
-        if (!mountedRef.current) return
-        const p = self.progress
-        const n = slides.length
-        const idx = Math.min(n - 1, Math.floor(p * n * 0.9999))
-        if (idx !== lastIdx) { lastIdx = idx; goToSlide(idx); setActive(idx) }
-        if (p <= 0.75) {
-          const nextRotY = gsap.utils.mapRange(0, 0.75, INIT_ROT_Y, END_ROT_Y, p)
-          if (Math.abs(nextRotY - truckTarget.current.rotY) > 0.0001) {
-            truckTarget.current.rotY = nextRotY
-            invalidateRef.current?.()
-          }
-        }
-        if (canvasWrapRef.current)
-          gsap.set(canvasWrapRef.current, { x: 0, opacity: 1 })
-        if (p > 0.85) {
-          const last = slideRefs.current[n - 1]
-          if (last) gsap.set(last, { opacity: 1 })
-        }
-        // ← THÊM LẠI dòng này
-        // ← THÊM LẠI dòng này
-      },
-    })
-
+    applyTheme(slides[active]?.theme)
     return () => {
       mountedRef.current = false
       counterTweens.current.forEach(t => t.kill())
       counterTweens.current = []
-      aboutTrigger.kill()
-      if (wipeTl) wipeTl.kill()
     }
-  }, [animateCounters, applyTheme, slides])
+  }, [active, applyTheme, slides])
 
-  if (!aboutIntro.enabled) return null
+  if (aboutIntro.enabled === false) return null
 
   const at = THEMES[slides[active]?.theme] || THEMES.red
 
@@ -410,79 +326,116 @@ export default function About() {
       ref={sectionRef}
       className={styles.about}
       style={{ '--accent': at.accent, '--accent-rgb': at.accentRgb, '--ink': at.ink, '--ink-soft': at.inkSoft }}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
     >
-      <div className={styles.stickyWrap}>
-        <div ref={bgRef} className={styles.gradientBg} />
-        <div className={styles.grain} />
-        <div className={styles.redBar} />
+      <div ref={bgRef} className={styles.gradientBg} />
+      <div className={styles.grain} />
+      <div className={styles.redBar} />
 
-        {/* ── Left text column ── */}
-        <div className={styles.textCol}>
-          <nav className={styles.dots} aria-label="Slide navigation">
-            {slides.map((s, i) => (
-              <span
-                key={i}
-                className={`${styles.dot} ${active === i ? styles.dotActive : ''}`}
-                style={active === i ? { background: THEMES[s.theme].accent } : {}}
-                aria-label={s.label}
-              />
-            ))}
-          </nav>
-
-          {/* Slides */}
-          <div className={styles.slidesWrap}>
-            {slides.map((slide, i) => {
-              const t = THEMES[slide.theme]
+      <div className={styles.container}>
+        {/* ── Top Tabs Navigation (01, 02, 03, 04) ── */}
+        <div className={styles.topNavWrap}>
+          <div className={styles.tabsNav} role="tablist">
+            {slides.map((s, i) => {
+              const isActive = active === i
+              const theme = THEMES[s.theme]
               return (
-                <div key={i} ref={el => (slideRefs.current[i] = el)} className={styles.slide}>
+                <button
+                  key={i}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  className={`${styles.tabBtn} ${isActive ? styles.tabBtnActive : ''}`}
+                  onClick={() => switchSlide(i)}
+                  style={isActive ? { '--tab-accent': theme.accent } : {}}
+                >
+                  <span className={styles.tabIdx}>{String(i + 1).padStart(2, '0')}</span>
+                  <span className={styles.tabLabel}>{s.label}</span>
+                  {isActive && (
+                    <span
+                      key={`${active}-${isPaused}`}
+                      className={styles.tabProgressBar}
+                      style={{
+                        background: theme.accent,
+                        animationDuration: `${SLIDE_DURATION}ms`,
+                        animationPlayState: isPaused ? 'paused' : 'running',
+                      }}
+                    />
+                  )}
+                </button>
+              )
+            })}
+          </div>
 
-                  {/* Wipe overlay */}
-                  <div ref={el => (wipeRefs.current[i] = el)} className={styles.wipeBar} />
+          {/* Nút Prev / Next tiện dụng */}
+          <div className={styles.navArrows}>
+            <button
+              type="button"
+              className={styles.arrowBtn}
+              onClick={() => switchSlide((active - 1 + slides.length) % slides.length)}
+              aria-label="Mục trước"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className={styles.arrowBtn}
+              onClick={() => switchSlide((active + 1) % slides.length)}
+              aria-label="Mục tiếp theo"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </div>
+        </div>
 
-                  {/* Decorative huge number */}
-                  <div
-                    className={styles.decoNumber}
-                    style={{
-                      position: 'absolute',
-                      bottom: '-0.15em',
-                      right: 'clamp(28px, 4.5vw, 72px)',
-                      zIndex: 0,
-                      color: `rgba(${t.accentRgb},0.055)`,
-                    }}
-                  >
-                    {slide.decoNum}
-                  </div>
+        {/* ── Main Showcase Body ── */}
+        <div className={styles.mainGrid}>
+          {/* Cột trái: Nội dung động của Slide */}
+          <div className={styles.contentCol}>
+            {slides.map((slide, i) => {
+              const isCurr = active === i
+              const t = THEMES[slide.theme]
 
-                  {/* Ruled lines */}
-                  <div
-                    className={styles.decoRuled}
-                    style={{ top: 'clamp(200px, 28vh, 280px)' }}
-                  />
+              return (
+                <div
+                  key={i}
+                  ref={el => (slideRefs.current[i] = el)}
+                  className={`${styles.slideCard} ${isCurr ? styles.slideCardActive : ''}`}
+                >
+                  {/* Số Watermark mờ nghệ thuật */}
+                  <div className={styles.decoNumber}>{slide.decoNum}</div>
 
-                  {/* Diagonal image */}
+                  {/* Ảnh tiêu điểm minh họa */}
                   <div className={styles.slideImgWrap}>
                     <img src={slide.image} alt={slide.label} className={styles.slideImg} loading="lazy" />
                     <div className={styles.slideImgOverlay} />
                     <div
                       className={styles.slideImgTag}
-                      style={{ color: t.accent, borderColor: `${t.accent}50` }}
+                      style={{ color: t.accent, borderColor: `${t.accent}40` }}
                     >
-                      {slide.label}
+                      {slide.imageTag || slide.label}
                     </div>
                   </div>
 
-                  {/* Label */}
-                  <p className={styles.label} style={{ color: t.accent }}>
-                    <span className={styles.labelLine} style={{ background: t.accent }} />
+                  {/* Badge định danh */}
+                  <div className={styles.labelBadge} style={{ color: t.accent }}>
+                    <span className={styles.labelDot} style={{ background: t.accent }} />
                     {slide.label}
-                  </p>
+                  </div>
 
+                  {/* Tiêu đề chính */}
                   <h2 className={styles.title} style={{ color: t.ink }}>
                     {slide.title}
                     <br />
                     <span className={styles.titleAccentShimmer}>{slide.titleAccent}</span>
                   </h2>
 
+                  {/* Nội dung slide 01 (Giới thiệu) */}
                   {slide.body && (
                     <p className={styles.body} style={{ color: t.inkSoft }}>{slide.body}</p>
                   )}
@@ -490,8 +443,7 @@ export default function About() {
                   {slide.pills && (
                     <div className={styles.pills}>
                       {slide.pills.map((p, j) => (
-                        <span key={j} className={styles.pill}
-                          style={{ borderColor: `${t.accent}50`, color: t.accent }}>
+                        <span key={j} className={styles.pill} style={{ color: t.accent }}>
                           {p}
                         </span>
                       ))}
@@ -507,6 +459,7 @@ export default function About() {
                     </Link>
                   )}
 
+                  {/* Nội dung slide 02 (Con số nổi bật) */}
                   {slide.stats && (
                     <div className={styles.statsGrid}>
                       {slide.stats.map((s, j) => (
@@ -514,15 +467,19 @@ export default function About() {
                           <span className={styles.statAccentLine} style={{ background: t.accent }} />
                           <span
                             className={styles.statNum}
-                            data-count={s.raw} data-suffix={s.suffix}
+                            data-count={s.raw}
+                            data-suffix={s.suffix}
                             style={{ color: t.accent }}
-                          >{s.num}</span>
+                          >
+                            {s.num}
+                          </span>
                           <span className={styles.statDesc}>{s.desc}</span>
                         </div>
                       ))}
                     </div>
                   )}
 
+                  {/* Nội dung slide 03 (Mốc lịch sử) */}
                   {slide.milestones && (
                     <div className={styles.milestones}>
                       {slide.milestones.map((m, j) => (
@@ -535,14 +492,16 @@ export default function About() {
                     </div>
                   )}
 
+                  {/* Nội dung slide 04 (Giá trị cốt lõi) */}
                   {slide.values && (
                     <div className={styles.valuesGrid}>
                       {slide.values.map((v, j) => (
-                        <div key={j} className={styles.valueItem}
-                          style={{ borderColor: `${t.accent}20` }}>
+                        <div key={j} className={styles.valueItem} style={{ borderColor: `${t.accent}20` }}>
                           <span className={styles.valueIcon} style={{ color: t.accent }}>{v.icon}</span>
-                          <span className={styles.valueTitle} style={{ color: t.ink }}>{v.title}</span>
-                          <p className={styles.valueText} style={{ color: t.inkSoft }}>{v.text}</p>
+                          <div className={styles.valueContent}>
+                            <span className={styles.valueTitle} style={{ color: t.ink }}>{v.title}</span>
+                            <p className={styles.valueText} style={{ color: t.inkSoft }}>{v.text}</p>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -552,59 +511,79 @@ export default function About() {
             })}
           </div>
 
-          {/* Progress */}
-          <div className={styles.progressWrap}>
-            {slides.map((s, i) => (
-              <div key={i}
-                className={`${styles.progressStep} ${active >= i ? styles.progressActive : ''}`}
-                style={active >= i ? { '--step-color': THEMES[s.theme].accent } : {}}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* ── Right: 3D truck ── */}
-        <div ref={canvasWrapRef} className={styles.canvasCol}>
-          <div className={styles.cornerTL} style={{ borderColor: at.accent }} />
-          <div className={styles.cornerBR} style={{ borderColor: at.accent }} />
-          <div className={styles.slideNum}>
-            <span className={styles.slideNumCurrent}>{String(active + 1).padStart(2, '0')}</span>
-            <span className={styles.slideNumSep}> / </span>
-            <span className={styles.slideNumTotal}>{String(slides.length).padStart(2, '0')}</span>
-          </div>
-          <Canvas
-            frameloop="demand"
-            camera={{ position: [-1, 10, 24], fov: 21 }}
-            gl={{
-              alpha: true,
-              antialias: renderQuality.antialias,
-              powerPreference: 'high-performance',
-              stencil: false,
-            }}
-            dpr={renderQuality.dpr}
-            style={{ width: '100%', height: '100%', background: 'transparent' }}
+          {/* Cột phải: 3D Showroom Xe Đầu Kéo Tự Xoay */}
+          <div
+            className={styles.canvasCol}
+            onMouseEnter={() => { isCanvasHovered.current = true }}
+            onMouseLeave={() => { isCanvasHovered.current = false }}
           >
-            <Suspense fallback={null}>
-              <InvalidateOnScroll invalidateRef={invalidateRef} />
-              <CameraSetup />
-              <ambientLight intensity={1.2} />
-              <directionalLight position={[5, 8, 5]} intensity={2.2} />
-              <directionalLight position={[-5, 4, -3]} intensity={0.8} />
-              <Truck targetRef={truckTarget} />
-              <ContactShadows
-                position={[0, 0, 0]}
-                opacity={0.28}
-                scale={18}
-                blur={2.5}
-                far={4}
-                frames={1}
-                resolution={128}
-              />
-              <Environment preset="city" background={false} />
-            </Suspense>
-          </Canvas>
+            {/* Hiệu ứng bệ hào quang sàn & vạch laser cao tốc */}
+            <div
+              className={styles.truckStageGlow}
+              style={{ background: `radial-gradient(ellipse 65% 45% at 50% 50%, rgba(${at.accentRgb}, 0.16) 0%, transparent 70%)` }}
+            />
+            <div
+              className={styles.truckRoadMarks}
+              style={{ background: `linear-gradient(90deg, transparent 0%, rgba(${at.accentRgb}, 0.16) 20%, rgba(${at.accentRgb}, 0.35) 50%, rgba(${at.accentRgb}, 0.16) 80%, transparent 100%)` }}
+            />
+
+            {/* Khung viền góc tinh tế */}
+            <div className={styles.cornerTL} style={{ borderColor: at.accent }} />
+            <div className={styles.cornerBR} style={{ borderColor: at.accent }} />
+
+            {/* Huy hiệu hướng dẫn tương tác */}
+            <div className={styles.dragHintBadge}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M8 12h8m-8 0l3-3m-3 3l3 3m5-3l-3-3m3 3l-3 3" />
+              </svg>
+              <span>Xe tự xoay 360° · Giữ chuột để xoay tự do</span>
+            </div>
+
+            {/* Chỉ số slide góc sàn */}
+            <div className={styles.slideNum}>
+              <span className={styles.slideNumCurrent}>{String(active + 1).padStart(2, '0')}</span>
+              <span className={styles.slideNumSep}> / </span>
+              <span className={styles.slideNumTotal}>{String(slides.length).padStart(2, '0')}</span>
+            </div>
+
+            <Canvas
+              camera={{ position: [-1, 8.8, 22.5], fov: 21.5 }}
+              gl={{
+                alpha: true,
+                antialias: renderQuality.antialias,
+                powerPreference: 'high-performance',
+              }}
+              dpr={renderQuality.dpr}
+              style={{ width: '100%', height: '100%', background: 'transparent' }}
+            >
+              <Suspense fallback={null}>
+                <CameraSetup />
+                <ambientLight intensity={1.3} />
+                <directionalLight position={[6, 9, 6]} intensity={2.5} />
+                <directionalLight position={[-6, 5, -3]} intensity={1.0} />
+                <Truck targetRef={truckTarget} isHovered={isCanvasHovered} />
+                <OrbitControls
+                  enableZoom={false}
+                  enablePan={false}
+                  maxPolarAngle={Math.PI / 2 + 0.05}
+                  minPolarAngle={Math.PI / 3.4}
+                  rotateSpeed={0.8}
+                />
+                <ContactShadows
+                  position={[0, 0, 0]}
+                  opacity={0.35}
+                  scale={20}
+                  blur={2.4}
+                  far={4.5}
+                  frames={1}
+                  resolution={256}
+                />
+                <Environment preset="city" background={false} />
+              </Suspense>
+            </Canvas>
+          </div>
         </div>
       </div>
     </section>
   )
-} 
+}
