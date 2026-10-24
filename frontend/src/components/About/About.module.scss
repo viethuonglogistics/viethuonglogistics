@@ -768,37 +768,402 @@
 }
 
 // ─── Responsive Breakdown ─────────────────────────────────────────────────
+
+// ── Tablet & Small Laptop (≤ 1024px) ──────────────────────────────────────
 @media (max-width: 1024px) {
+  .about {
+    min-height: auto;
+    padding: clamp(24px, 3.5vh, 40px) 0;
+  }
+
+  .container {
+    padding: 0 clamp(20px, 4vw, 32px);
+  }
+
+  .topNavWrap {
+    margin-bottom: 16px;
+  }
+
   .mainGrid {
     grid-template-columns: 1fr;
-    gap: 32px;
-  }
-  .contentCol {
+    gap: 24px;
     min-height: auto;
   }
+
+  // ── Content column: stack slides, show only active ──
+  .contentCol {
+    position: relative;
+    min-height: auto;
+    height: auto;
+  }
+
+  // On mobile, hide inactive slides completely and make active one flow normally
   .slideCard {
+    position: absolute;
+    inset: 0;
+    display: none;
+  }
+
+  .slideCardActive {
+    display: flex;
     position: relative;
     inset: auto;
+    opacity: 1;
+    transform: none;
   }
+
+  // ── Canvas: compact height ──
   .canvasCol {
-    height: 380px;
+    height: clamp(260px, 42vw, 380px);
+    order: -1; // Move 3D truck above content on mobile
   }
-  .container {
-    padding: 0 24px;
+
+  // Hide decorative cruft on smaller screens
+  .dragHintBadge {
+    display: none;
+  }
+
+  .cornerTL,
+  .cornerBR {
+    display: none;
+  }
+
+  .slideNum {
+    display: none;
+  }
+
+  // Watermark smaller
+  .decoNumber {
+    font-size: clamp(70px, 12vw, 120px);
+    top: -5px;
+    right: 0;
+    opacity: 0.6;
+  }
+
+  // Image wrap
+  .slideImgWrap {
+    height: clamp(110px, 16vw, 150px);
+    margin-bottom: 14px;
+  }
+
+  // Title
+  .title {
+    font-size: clamp(22px, 3.5vw, 32px);
+    margin-bottom: 10px;
+  }
+
+  // Body text
+  .body {
+    font-size: clamp(12px, 1.5vw, 13px);
+    max-width: 100%;
+    margin-bottom: 14px;
+    line-height: 1.75;
+  }
+
+  // Pills wrap tighter
+  .pills {
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .pill {
+    padding: 5px 12px;
+    font-size: 8px;
+  }
+
+  // Stats grid
+  .statsGrid {
+    gap: 12px 20px;
+  }
+
+  .statNum {
+    font-size: clamp(24px, 4vw, 36px);
+  }
+
+  // Milestones tighter
+  .milestones {
+    gap: 6px;
+  }
+
+  // Values tighter
+  .valuesGrid {
+    gap: 8px;
+  }
+
+  .valueItem {
+    padding: 8px 12px;
+  }
+
+  .valueText {
+    font-size: 10.5px;
   }
 }
 
-@media (max-width: 640px) {
+// ── Large Phones & Small Tablets (≤ 768px) ────────────────────────────────
+@media (max-width: 768px) {
+  .about {
+    padding: clamp(18px, 3vh, 32px) 0;
+  }
+
+  .container {
+    padding: 0 16px;
+  }
+
+  .topNavWrap {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
   .tabsNav {
+    width: 100%;
     overflow-x: auto;
     flex-wrap: nowrap;
-    padding-bottom: 4px;
+    padding-bottom: 6px;
+    gap: 6px;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar { display: none; }
   }
+
+  .tabBtn {
+    flex-shrink: 0;
+    padding: 7px 12px;
+    gap: 6px;
+    min-width: max-content;
+  }
+
+  .tabIdx {
+    font-size: 10px;
+  }
+
+  .tabLabel {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+  }
+
   .navArrows {
     display: none;
   }
+
+  .canvasCol {
+    height: clamp(220px, 50vw, 320px);
+  }
+
+  .truckStageGlow {
+    width: clamp(200px, 60vw, 360px);
+    height: clamp(60px, 12vw, 120px);
+    bottom: 8%;
+  }
+
+  .truckRoadMarks {
+    bottom: 12%;
+    left: 8%;
+    right: 8%;
+  }
+
+  .slideImgWrap {
+    height: clamp(90px, 22vw, 140px);
+    clip-path: polygon(0 0, 96% 0, 100% 100%, 0 100%);
+    margin-bottom: 12px;
+  }
+
+  .title {
+    font-size: clamp(20px, 5vw, 28px);
+    margin-bottom: 8px;
+  }
+
+  .body {
+    font-size: 12px;
+    line-height: 1.7;
+    margin-bottom: 12px;
+  }
+
+  .labelBadge {
+    font-size: 7.5px;
+    margin-bottom: 8px;
+    padding: 3px 10px 3px 6px;
+  }
+
   .statsGrid {
     grid-template-columns: 1fr 1fr;
-    gap: 12px;
+    gap: 10px 16px;
+  }
+
+  .statNum {
+    font-size: clamp(22px, 6vw, 32px);
+  }
+
+  .statDesc {
+    font-size: 7.5px;
+    letter-spacing: 0.1em;
+  }
+
+  .statAccentLine {
+    width: 10px;
+    margin-bottom: 6px;
+  }
+
+  .milestones {
+    gap: 5px;
+
+    &::before {
+      left: 22px;
+    }
+  }
+
+  .milestoneIdx {
+    font-size: 8px;
+    width: 14px;
+  }
+
+  .year {
+    font-size: 11px;
+    width: 38px;
+  }
+
+  .event {
+    font-size: 10px;
+    line-height: 1.5;
+  }
+
+  .valuesGrid {
+    gap: 6px;
+  }
+
+  .valueItem {
+    padding: 8px 10px;
+    gap: 10px;
+  }
+
+  .valueIcon {
+    font-size: 14px;
+  }
+
+  .valueTitle {
+    font-size: 8px;
+    letter-spacing: 0.12em;
+  }
+
+  .valueText {
+    font-size: 10px;
+    line-height: 1.55;
+  }
+
+  .cta {
+    font-size: 8.5px;
+    gap: 8px;
+    padding: 5px 12px 5px 0;
+
+    svg {
+      width: 11px;
+      height: 11px;
+    }
+  }
+}
+
+// ── Small Phones (≤ 480px) ────────────────────────────────────────────────
+@media (max-width: 480px) {
+  .about {
+    padding: 16px 0;
+  }
+
+  .container {
+    padding: 0 14px;
+  }
+
+  .canvasCol {
+    height: clamp(180px, 52vw, 260px);
+  }
+
+  .decoNumber {
+    font-size: clamp(50px, 16vw, 80px);
+    -webkit-text-stroke: 1px rgba(var(--accent-rgb), 0.1);
+  }
+
+  .slideImgWrap {
+    height: clamp(80px, 24vw, 120px);
+    clip-path: none;
+    border-radius: 6px;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+
+  .title {
+    font-size: clamp(18px, 5.5vw, 24px);
+    letter-spacing: -0.02em;
+    margin-bottom: 6px;
+  }
+
+  .body {
+    font-size: 11.5px;
+    line-height: 1.65;
+    margin-bottom: 10px;
+  }
+
+  .pills {
+    gap: 5px;
+    margin-bottom: 10px;
+  }
+
+  .pill {
+    font-size: 7.5px;
+    padding: 4px 10px;
+    border-radius: 14px;
+    letter-spacing: 0.08em;
+  }
+
+  .statsGrid {
+    gap: 8px 12px;
+  }
+
+  .statItem {
+    padding-top: 8px;
+  }
+
+  .statNum {
+    font-size: clamp(20px, 7vw, 28px);
+  }
+
+  .statDesc {
+    font-size: 7px;
+  }
+
+  .milestone {
+    gap: 10px;
+  }
+
+  .event {
+    font-size: 9.5px;
+  }
+
+  .valueItem {
+    padding: 6px 8px;
+    gap: 8px;
+    border-radius: 6px;
+  }
+
+  .valueTitle {
+    font-size: 7.5px;
+  }
+
+  .valueText {
+    font-size: 9.5px;
+    line-height: 1.5;
+  }
+
+  .tabBtn {
+    padding: 6px 10px;
+    gap: 5px;
+    border-radius: 6px;
+  }
+
+  .tabIdx {
+    font-size: 9px;
+  }
+
+  .tabLabel {
+    font-size: 8px;
   }
 }
